@@ -5,6 +5,10 @@
 
 > A lightweight, no-nonsense media viewer for local directories
 
+<p align="center">
+    <img src="https://github.com/user-attachments/assets/8436178a-f51b-4c88-9d62-0ff6cff3b27c" alt="Slideshow of Webinterface">
+</p>
+
 ## 🔍 Overview
 
 I was fed up with overly complex gallery applications that process, copy, and transcode files unnecessarily. **LocalPics** is born out of the need for a simple, efficient way to view files in directories without any processing overhead. 
