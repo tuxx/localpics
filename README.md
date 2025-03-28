@@ -88,6 +88,14 @@ make package
 
 Contributions are welcome! Please feel free to submit pull requests or open issues to improve the application.
 
+### Prerequisites
+
+- Go 1.16 or newer
+- Make (for using the Makefile)
+- Git hooks installed
+    - `./.githooks/setup-hooks.sh`
+    - [prettier](https://prettier.io/docs/install) (for fixing the html template indenting)
+
 Before contributing:
 1. Fork the repo
 2. Push your changes and submit a Pull Request
