@@ -1,0 +1,86 @@
+name: Build
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      build_success: ${{ steps.build_step.outputs.build_success }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21.0'
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y make zip
+
+      - name: Extract build metadata
+        id: meta
+        run: |
+          echo "VERSION=${GITHUB_REF##*/}" >> $GITHUB_ENV
+          echo "COMMIT=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+          echo "DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_ENV
+
+      - name: Build and Package
+        id: build_step
+        run: |
+          make release-all VERSION=$VERSION COMMIT=$COMMIT DATE=$DATE
+          make package VERSION=$VERSION COMMIT=$COMMIT DATE=$DATE
+          echo "build_success=true" >> $GITHUB_OUTPUT
+        continue-on-error: true
+
+      - name: Check if build succeeded
+        if: steps.build_step.outputs.build_success != 'true'
+        run: exit 1
+
+      - name: Upload build artifacts
+        if: steps.build_step.outputs.build_success == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: localpics-artifacts
+          path: build/release/
+          retention-days: 1
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: needs.build.outputs.build_success == 'true'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: localpics-artifacts
+          path: build/release/
+
+      - name: Get commit message for release notes
+        id: get_release_notes
+        run: |
+          echo "release_notes<<EOF" >> $GITHUB_OUTPUT
+          git log -1 --pretty=%B >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          body: ${{ steps.get_release_notes.outputs.release_notes }}
+          files: |
+            build/release/*.tar.gz
+            build/release/*.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
