@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"html/template"
 	"io/fs"
 	"log"
 	"net/http"
@@ -15,7 +16,6 @@ import (
 	"sort"
 	"strings"
 	"syscall"
-    "html/template"
 	"time"
 )
 
@@ -42,7 +42,7 @@ type FileInfo struct {
 // TemplateData holds data to pass to the template
 type TemplateData struct {
 	AllowDelete bool
-    Version     string
+	Version     string
 }
 
 // categorizeFileType determines the media type based on file extension
@@ -89,11 +89,11 @@ func scanDirectory(root string, baseURL string) ([]FileInfo, error) {
 		}
 		ext := strings.TrimPrefix(filepath.Ext(name), ".")
 		fileType := categorizeFileType(ext)
-		
+
 		// Always use forward slashes for web URLs, regardless of platform
 		webPath := filepath.Join(baseURL, name)
 		webPath = strings.ReplaceAll(webPath, "\\", "/")
-		
+
 		files = append(files, FileInfo{
 			Name:      name,
 			Path:      webPath,
@@ -135,13 +135,13 @@ func generateHTML(outputDir string, allowDelete bool) error {
 	if err != nil {
 		return fmt.Errorf("failed to read embedded template: %w", err)
 	}
-	
+
 	// Parse the template
 	tmpl, err := template.New("index").Parse(string(tmplContent))
 	if err != nil {
 		return fmt.Errorf("failed to parse template: %w", err)
 	}
-	
+
 	// Create the output file
 	indexPath := filepath.Join(outputDir, "index.html")
 	outFile, err := os.Create(indexPath)
@@ -149,23 +149,23 @@ func generateHTML(outputDir string, allowDelete bool) error {
 		return fmt.Errorf("failed to create index.html: %w", err)
 	}
 	defer outFile.Close()
-	
+
 	// Execute the template with data
 	data := TemplateData{
 		AllowDelete: allowDelete,
-		Version: Version,
+		Version:     Version,
 	}
-	
+
 	if err := tmpl.Execute(outFile, data); err != nil {
 		return fmt.Errorf("failed to execute template: %w", err)
 	}
-	
+
 	return nil
 }
 
 func cleanupOnExit(path string) {
 	c := make(chan os.Signal, 1)
-	
+
 	// Handle cross-platform signals
 	if runtime.GOOS == "windows" {
 		// Windows only reliably supports os.Interrupt (Ctrl+C)
@@ -174,7 +174,7 @@ func cleanupOnExit(path string) {
 		// Unix-based systems support more signals
 		signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	}
-	
+
 	go func() {
 		<-c
 		fmt.Println("\nCleaning up...")
@@ -199,7 +199,7 @@ func FileDeleteHandler(inputDir string, allowDelete bool) http.HandlerFunc {
 		// Extract filename from path, normalize for Windows
 		filename := r.URL.Path[len("/delete/"):]
 		filename = strings.ReplaceAll(filename, "/", string(os.PathSeparator))
-		
+
 		if filename == "" {
 			http.Error(w, "No filename specified", http.StatusBadRequest)
 			return
@@ -237,8 +237,7 @@ func main() {
 	inputDir := flag.String("indir", "", "Directory to scan for media files")
 	outputDir := flag.String("outdir", "", "Directory to write HTML and JSON files (optional)")
 	allowDelete := flag.Bool("delete", false, "Enable file deletion API (default: false)")
-    showVersion := flag.Bool("v", false, "Print version information and exit")
-
+	showVersion := flag.Bool("v", false, "Print version information and exit")
 
 	flag.Usage = func() {
 		fmt.Println("Usage: localpics -indir <input_directory> [-outdir <output_directory>] [-delete]")
@@ -247,7 +246,7 @@ func main() {
 
 	flag.Parse()
 
-    if *showVersion {
+	if *showVersion {
 		fmt.Printf("LocalPics\nVersion: %s\nCommit: %s\nBuildDate: %s\n", Version, Commit, BuildDate)
 		os.Exit(0)
 	}
@@ -256,7 +255,6 @@ func main() {
 		flag.Usage()
 		os.Exit(1)
 	}
-
 
 	tempOut := false
 	if *outputDir == "" {
@@ -295,10 +293,10 @@ func main() {
 		fmt.Println("⚠️ WARNING: File deletion API is enabled")
 		http.Handle("/delete/", FileDeleteHandler(*inputDir, true))
 	}
-	
+
 	http.Handle("/media/", http.StripPrefix("/media/", http.FileServer(http.Dir(*inputDir))))
 	http.Handle("/", http.FileServer(http.Dir(*outputDir)))
-	
+
 	fmt.Println("Serving on http://localhost:8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
