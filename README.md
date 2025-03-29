@@ -100,7 +100,7 @@ Contributions are welcome! Please feel free to submit pull requests or open issu
     - `./.githooks/setup-hooks.sh`
     - [prettier](https://prettier.io/docs/install) (for fixing the html template indenting)
 
-Before contributing:
+### Before contributing
 1. Fork the repo
 2. Push your changes and submit a Pull Request
 3. Bother [Tuxx](https://github.com/tuxx) if it sits too long 🙂
