@@ -334,6 +334,79 @@
         justify-content: center;
         font-size: 1.5rem;
       }
+      /* Add in the style section of index.html */
+      .spacer {
+        flex-grow: 1;
+      }
+
+      .zoom-control {
+        font-size: 0.9rem;
+        padding: 2px 8px !important;
+        margin-left: 5px;
+      }
+
+      /* Custom classes for different zoom levels */
+      .container.zoom-xs {
+        column-count: 8;
+      }
+      .container.zoom-sm {
+        column-count: 6;
+      }
+      .container.zoom-md {
+        column-count: 4;
+      }
+      .container.zoom-lg {
+        column-count: 2;
+      }
+      .container.zoom-xl {
+        column-count: 1;
+      }
+
+      /* Adjust file cards at different zoom levels */
+      .zoom-xs .file-card .name {
+        font-size: 0.7rem;
+        margin-top: 0.2rem;
+      }
+      .zoom-xs .file-card .info,
+      .zoom-sm .file-card .info {
+        display: none;
+      }
+      .zoom-xs .file-card .view-full,
+      .zoom-xs .file-card .download,
+      .zoom-sm .file-card .view-full,
+      .zoom-sm .file-card .download {
+        font-size: 0.7rem;
+        margin-top: 0.2rem;
+      }
+
+      @media (max-width: 768px) {
+        .container.zoom-xs {
+          column-count: 4;
+        }
+        .container.zoom-sm {
+          column-count: 3;
+        }
+        .container.zoom-md {
+          column-count: 2;
+        }
+        .container.zoom-lg,
+        .container.zoom-xl {
+          column-count: 1;
+        }
+      }
+      .nav a.disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+      }
+      body[data-category="video"] .container {
+        column-count: 2 !important; /* Force 2 columns for videos */
+      }
+
+      @media (max-width: 768px) {
+        body[data-category="video"] .container {
+          column-count: 1 !important; /* Single column on small screens */
+        }
+      }
     </style>
   </head>
   <body>
@@ -347,6 +420,9 @@
       <a onclick="load('pdf')" data-category="pdf">PDFs</a>
       <a onclick="load('archive')" data-category="archive">Archives</a>
       <a onclick="load('other')" data-category="other">Other</a>
+      <span class="spacer"></span>
+      <a onclick="zoomIn()" title="Zoom In" class="zoom-control">🔍+</a>
+      <a onclick="zoomOut()" title="Zoom Out" class="zoom-control">🔍-</a>
       <span
         style="
           float: right;
@@ -426,6 +502,8 @@
       let endReached = false;
       let imageObserver;
       let resizeObserver;
+      let currentZoom = "md"; // Default zoom level: xs, sm, md, lg, xl
+      const zoomLevels = ["xs", "sm", "md", "lg", "xl"];
 
       // Fetch all stats on page load
       window.addEventListener("DOMContentLoaded", function () {
@@ -434,6 +512,18 @@
         });
         setupImageObserver();
         setupResizeObserver();
+        // Initialize zoom level
+        const container = document.getElementById("container");
+        container.classList.add("zoom-" + currentZoom);
+        const savedZoom = localStorage.getItem("preferredZoom");
+        if (savedZoom && zoomLevels.includes(savedZoom)) {
+          currentZoom = savedZoom;
+        } else {
+          // If no saved preference, explicitly set the default
+          currentZoom = "md";
+          localStorage.setItem("preferredZoom", currentZoom);
+        }
+        updateZoomButtons();
       });
 
       // Close modals with Escape key
@@ -655,6 +745,30 @@
           });
         }
       }
+      function checkForMoreContent() {
+        if (loadingMore || endReached) return;
+
+        const viewportHeight = window.innerHeight;
+        const documentHeight = document.body.offsetHeight;
+        const scrollPosition = window.scrollY;
+
+        // Load more content if we're zoomed out and don't have enough content to fill the viewport
+        // or if we're close to the bottom
+        if (
+          documentHeight < viewportHeight * 1.5 ||
+          scrollPosition + viewportHeight > documentHeight - 500
+        ) {
+          loadingMore = true;
+          render().then(() => {
+            loadingMore = false;
+
+            // If we're still not filling the viewport and have more content, keep loading
+            if (!endReached && documentHeight < viewportHeight * 1.5) {
+              setTimeout(checkForMoreContent, 100);
+            }
+          });
+        }
+      }
 
       // Load a category
       async function load(t) {
@@ -665,30 +779,70 @@
         updateActiveNav(t);
         document.getElementById("intro").style.display = "none";
 
+        // Set data attribute on body for CSS targeting
+        document.body.setAttribute("data-category", t);
+
         const container = document.getElementById("container");
+        container.className = "container"; // Reset classes
+
+        // Get references to zoom buttons
+        const zoomInBtn = document.querySelector('a[onclick="zoomIn()"]');
+        const zoomOutBtn = document.querySelector('a[onclick="zoomOut()"]');
+
+        // Handle video category specifically
+        if (t === "video") {
+          // Force 2 columns for videos
+          container.classList.add("grid-2");
+          // Force a fixed zoom level
+          currentZoom = "md";
+          // Explicitly disable zoom buttons
+          zoomInBtn.classList.add("disabled");
+          zoomOutBtn.classList.add("disabled");
+          // Prevent clicking
+          zoomInBtn.style.pointerEvents = "none";
+          zoomOutBtn.style.pointerEvents = "none";
+        } else if (t === "text" || t === "code" || t === "pdf") {
+          container.classList.add("grid-2");
+          // Re-enable zoom buttons
+          zoomInBtn.classList.remove("disabled");
+          zoomOutBtn.classList.remove("disabled");
+          zoomInBtn.style.pointerEvents = "auto";
+          zoomOutBtn.style.pointerEvents = "auto";
+        } else {
+          container.classList.add("grid-4");
+          // Re-enable zoom buttons
+          zoomInBtn.classList.remove("disabled");
+          zoomOutBtn.classList.remove("disabled");
+          zoomInBtn.style.pointerEvents = "auto";
+          zoomOutBtn.style.pointerEvents = "auto";
+        }
+
+        // Add zoom class
+        container.classList.add("zoom-" + currentZoom);
+
+        // Now show loading indicator
         container.innerHTML =
           '<div class="loading-container"><div class="spinner"></div><p>Loading files...</p></div>';
 
-        // Set the appropriate grid layout based on file type
-        container.className = "container";
-        if (t === "text" || t === "code" || t === "pdf") {
-          container.classList.add("grid-2");
-        } else {
-          container.classList.add("grid-4");
+        // Skip updateZoomButtons() for videos as it would re-enable them
+        if (t !== "video") {
+          updateZoomButtons();
         }
-
         try {
           const response = await fetch(t + ".json");
           if (!response.ok) throw new Error(`HTTP error ${response.status}`);
           data = await response.json();
           container.innerHTML = "";
-          await render();
+          await render().then(() => {
+            // Check if we need to load more content based on viewport
+            checkForMoreContent();
+          });
         } catch (error) {
           container.innerHTML = `<div class="error-container">
-                <h3>Error Loading Files</h3>
-                <p>${error.message}</p>
-                <button onclick="load('${t}')">Try Again</button>
-              </div>`;
+        <h3>Error Loading Files</h3>
+        <p>${error.message}</p>
+        <button onclick="load('${t}')">Try Again</button>
+      </div>`;
         }
       }
 
@@ -1246,6 +1400,71 @@
           top: 0,
           behavior: "smooth",
         });
+      }
+      function zoomIn() {
+        const currentIndex = zoomLevels.indexOf(currentZoom);
+        if (currentIndex < zoomLevels.length - 1) {
+          setZoom(zoomLevels[currentIndex + 1]);
+        }
+        updateZoomButtons();
+      }
+
+      function zoomOut() {
+        const currentIndex = zoomLevels.indexOf(currentZoom);
+        if (currentIndex > 0) {
+          setZoom(zoomLevels[currentIndex - 1]);
+        }
+        updateZoomButtons();
+      }
+
+      function updateZoomButtons() {
+        const currentIndex = zoomLevels.indexOf(currentZoom);
+        const zoomInBtn = document.querySelector('a[onclick="zoomIn()"]');
+        const zoomOutBtn = document.querySelector('a[onclick="zoomOut()"]');
+
+        // Disable zoom in at maximum zoom level
+        if (currentIndex >= zoomLevels.length - 1) {
+          zoomInBtn.classList.add("disabled");
+          zoomInBtn.style.pointerEvents = "none";
+        } else {
+          zoomInBtn.classList.remove("disabled");
+          zoomInBtn.style.pointerEvents = "auto";
+        }
+
+        // Disable zoom out at minimum zoom level
+        if (currentIndex <= 0) {
+          zoomOutBtn.classList.add("disabled");
+          zoomOutBtn.style.pointerEvents = "none";
+        } else {
+          zoomOutBtn.classList.remove("disabled");
+          zoomOutBtn.style.pointerEvents = "auto";
+        }
+      }
+
+      function setZoom(level) {
+        const container = document.getElementById("container");
+
+        // Remove all zoom classes
+        container.classList.remove(
+          "zoom-xs",
+          "zoom-sm",
+          "zoom-md",
+          "zoom-lg",
+          "zoom-xl",
+        );
+
+        // Add the new zoom class
+        container.classList.add("zoom-" + level);
+
+        // Update current zoom
+        currentZoom = level;
+
+        // Save preference to localStorage
+        localStorage.setItem("preferredZoom", level);
+
+        // Check if we need to load more content after zooming out
+        // (smaller zoom levels = more items visible = need to load more)
+        setTimeout(checkForMoreContent, 100);
       }
     </script>
   </body>
