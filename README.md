@@ -43,9 +43,15 @@ Visit the [Releases page](https://github.com/tuxx/localpics/releases) and downlo
 
 # Enable file deletion (use with caution)
 ./localpics -indir /path/to/your/media -delete
+
+# Serve on a specific IP address and port
+./localpics -indir /path/to/your/media -host 0.0.0.0:8080
+
+# Scan directory recursively to include all subdirectories
+./localpics -indir /path/to/your/media -recursive
 ```
 
-After starting, open `http://localhost:8080` in your browser to view your files.
+After starting, open the displayed URL in your browser to view your files.
 
 ## 📋 Command Line Options
 
@@ -54,7 +60,9 @@ After starting, open `http://localhost:8080` in your browser to view your files.
 | `-indir` | **Required**. Directory to scan for media files |
 | `-outdir` | Optional. Directory to write HTML and JSON files |
 | `-delete` | Enable file deletion API (default: false) |
-
+| `-host` | Host address to serve on (default: localhost:8080) |
+| `-recursive` | Scan directory recursively (default: false) |
+| `-v` | Print version information and exit |
 ## 🏗️ Building from Source
 
 ### Prerequisites

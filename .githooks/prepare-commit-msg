@@ -9,6 +9,6 @@ fi
 
 if [ -f .git/.prettier-flag ]; then
     echo "" >> "$1"
-    echo "[auto] prettier applied to template/index.template" >> "$1"
+    echo "[auto] prettier applied to template/index.html" >> "$1"
     rm .git/.prettier-flag
 fi

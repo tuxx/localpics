@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -390,7 +390,9 @@
 
       // Fetch all stats on page load
       window.addEventListener("DOMContentLoaded", function () {
-        fetchAllStats();
+        fetchAllStats().then(() => {
+          updateNavigation();
+        });
       });
 
       // Close modals with Escape key
@@ -420,6 +422,34 @@
           });
         }
       };
+
+      // Update navigation based on file counts
+      function updateNavigation() {
+        const types = [
+          "image",
+          "video",
+          "audio",
+          "text",
+          "code",
+          "pdf",
+          "archive",
+          "other",
+        ];
+
+        types.forEach((type) => {
+          const stat = allFileStats[type];
+          const navItem = document.querySelector(`a[data-category="${type}"]`);
+
+          if (navItem) {
+            // Hide nav items with zero files
+            if (stat && stat.count === 0) {
+              navItem.style.display = "none";
+            } else {
+              navItem.style.display = "inline-block";
+            }
+          }
+        });
+      }
 
       // Fetch statistics for all file types
       async function fetchAllStats() {
@@ -461,8 +491,10 @@
           }, {});
 
           displayFileStats();
+          return allFileStats;
         } catch (error) {
           statsContainer.innerHTML = `<div class="error-container">Failed to load file statistics: ${error.message}</div>`;
+          return {};
         }
       }
 

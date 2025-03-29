@@ -19,7 +19,7 @@ import (
 	"time"
 )
 
-//go:embed template/index.template
+//go:embed template/index.html
 var templateFS embed.FS
 
 // Version information
@@ -57,7 +57,7 @@ func categorizeFileType(ext string) string {
 		return "audio"
 	case "pdf":
 		return "pdf"
-	case "txt", "md":
+	case "txt", "md", "log":
 		return "text"
 	case "go", "py", "c", "cpp", "h", "js", "ts", "html", "css", "sh", "java", "rs", "gd":
 		return "code"
@@ -68,40 +68,90 @@ func categorizeFileType(ext string) string {
 	}
 }
 
-func scanDirectory(root string, baseURL string) ([]FileInfo, error) {
+// scanDirectory scans a directory for files
+func scanDirectory(root string, baseURL string, recursive bool) ([]FileInfo, error) {
 	var files []FileInfo
-	entries, err := os.ReadDir(root)
-	if err != nil {
-		return nil, err
-	}
 
-	for _, entry := range entries {
-		if entry.IsDir() {
-			continue
-		}
-		name := entry.Name()
-		if name == "index.html" || strings.HasSuffix(name, ".json") {
-			continue
-		}
-		info, err := entry.Info()
-		if err != nil {
-			continue
-		}
-		ext := strings.TrimPrefix(filepath.Ext(name), ".")
-		fileType := categorizeFileType(ext)
+	if recursive {
+		// Use Walk for recursive scanning
+		err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
 
-		// Always use forward slashes for web URLs, regardless of platform
-		webPath := filepath.Join(baseURL, name)
-		webPath = strings.ReplaceAll(webPath, "\\", "/")
+			// Skip directories themselves
+			if info.IsDir() {
+				return nil
+			}
 
-		files = append(files, FileInfo{
-			Name:      name,
-			Path:      webPath,
-			Size:      info.Size(),
-			Modified:  info.ModTime(),
-			Extension: ext,
-			Type:      fileType,
+			// Get the relative path from the root directory
+			relPath, err := filepath.Rel(root, path)
+			if err != nil {
+				return err
+			}
+
+			name := info.Name()
+			if name == "index.html" || strings.HasSuffix(name, ".json") {
+				return nil
+			}
+
+			ext := strings.TrimPrefix(filepath.Ext(name), ".")
+			fileType := categorizeFileType(ext)
+
+			// Always use forward slashes for web URLs, regardless of platform
+			webPath := filepath.Join(baseURL, relPath)
+			webPath = strings.ReplaceAll(webPath, "\\", "/")
+
+			files = append(files, FileInfo{
+				Name:      name,
+				Path:      webPath,
+				Size:      info.Size(),
+				Modified:  info.ModTime(),
+				Extension: ext,
+				Type:      fileType,
+			})
+
+			return nil
 		})
+
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		// Original non-recursive logic
+		entries, err := os.ReadDir(root)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, entry := range entries {
+			if entry.IsDir() {
+				continue
+			}
+			name := entry.Name()
+			if name == "index.html" || strings.HasSuffix(name, ".json") {
+				continue
+			}
+			info, err := entry.Info()
+			if err != nil {
+				continue
+			}
+			ext := strings.TrimPrefix(filepath.Ext(name), ".")
+			fileType := categorizeFileType(ext)
+
+			// Always use forward slashes for web URLs, regardless of platform
+			webPath := filepath.Join(baseURL, name)
+			webPath = strings.ReplaceAll(webPath, "\\", "/")
+
+			files = append(files, FileInfo{
+				Name:      name,
+				Path:      webPath,
+				Size:      info.Size(),
+				Modified:  info.ModTime(),
+				Extension: ext,
+				Type:      fileType,
+			})
+		}
 	}
 
 	sort.Slice(files, func(i, j int) bool {
@@ -130,8 +180,9 @@ func writeJSONFiles(files []FileInfo, outputDir string) error {
 	return nil
 }
 
+// generateHTML creates the index.html file in the output directory
 func generateHTML(outputDir string, allowDelete bool) error {
-	tmplContent, err := templateFS.ReadFile("template/index.template")
+	tmplContent, err := templateFS.ReadFile("template/index.html")
 	if err != nil {
 		return fmt.Errorf("failed to read embedded template: %w", err)
 	}
@@ -238,9 +289,11 @@ func main() {
 	outputDir := flag.String("outdir", "", "Directory to write HTML and JSON files (optional)")
 	allowDelete := flag.Bool("delete", false, "Enable file deletion API (default: false)")
 	showVersion := flag.Bool("v", false, "Print version information and exit")
+	hostAddr := flag.String("host", "localhost:8080", "Host address to serve on (default: localhost:8080)")
+	recursive := flag.Bool("recursive", false, "Scan directory recursively (default: false)")
 
 	flag.Usage = func() {
-		fmt.Println("Usage: localpics -indir <input_directory> [-outdir <output_directory>] [-delete]")
+		fmt.Println("Usage: localpics -indir <input_directory> [-outdir <output_directory>] [-delete] [-host <host:port>]")
 		flag.PrintDefaults()
 	}
 
@@ -270,7 +323,7 @@ func main() {
 		log.Fatalf("failed to create output directory: %v", err)
 	}
 
-	files, err := scanDirectory(*inputDir, "/media")
+	files, err := scanDirectory(*inputDir, "/media", *recursive)
 	if err != nil {
 		log.Fatalf("failed to scan directory: %v", err)
 	}
@@ -297,6 +350,6 @@ func main() {
 	http.Handle("/media/", http.StripPrefix("/media/", http.FileServer(http.Dir(*inputDir))))
 	http.Handle("/", http.FileServer(http.Dir(*outputDir)))
 
-	fmt.Println("Serving on http://localhost:8080")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	fmt.Printf("Serving on http://%s\n", *hostAddr)
+	log.Fatal(http.ListenAndServe(*hostAddr, nil))
 }

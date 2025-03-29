@@ -23,18 +23,18 @@ if [ "$formatted_any" -eq 1 ]; then
     echo "go fmt was applied." > .git/.gofmt-flag
 fi
 
-echo "🔧 Checking for staged template/index.template..."
+echo "🔧 Checking for staged template/index.html..."
 
-if git diff --cached --name-only --diff-filter=ACM | grep -q "^template/index\.template$"; then
+if git diff --cached --name-only --diff-filter=ACM | grep -q "^template/index\.html$"; then
     if ! command -v prettier &> /dev/null; then
         echo "❌ Prettier is not installed. Please install it."
         exit 1
     fi
 
     if [ -f template/index.template ]; then
-        echo "✨ Running prettier on template/index.template..."
-        prettier --parser html --write template/index.template > /dev/null
-        git add template/index.template
+        echo "✨ Running prettier on template/index.html..."
+        prettier --parser html --write template/index.html > /dev/null
+        git add template/index.html
         echo "prettier was applied." > .git/.prettier-flag
     fi
 fi
