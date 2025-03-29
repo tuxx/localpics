@@ -736,9 +736,12 @@
             img.style.opacity = "0"; // Start hidden
             img.setAttribute("loading", "lazy");
             img.dataset.src = file.path; // Store path but don't load immediately
-            img.onclick = function () {
-              showImageModal(index + i);
-            };
+            (() => {
+              const imageIndex = index + i;
+              img.onclick = function () {
+                showImageModal(imageIndex);
+              };
+            })();
 
             // Add load event handler
             img.onload = function () {
