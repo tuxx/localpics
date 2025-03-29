@@ -327,7 +327,7 @@ func main() {
 	allowDelete := flag.Bool("delete", false, "Enable file deletion API (default: false)")
 	showVersion := flag.Bool("v", false, "Print version information and exit")
 	hostAddr := flag.String("host", "localhost:8080", "Host address to serve on (default: localhost:8080)")
-	recursive := flag.Bool("recursive", false, "Scan directory recursively (default: false)")
+	recursive := flag.Bool("recursive", true, "Scan directory recursively (default: true)")
 
 	flag.Usage = func() {
 		fmt.Println("Usage: localpics -indir <input_directory> [-outdir <output_directory>] [-delete] [-host <host:port>]")

@@ -46,9 +46,6 @@ Visit the [Releases page](https://github.com/tuxx/localpics/releases) and downlo
 
 # Serve on a specific IP address and port
 ./localpics -indir /path/to/your/media -host 0.0.0.0:8080
-
-# Scan directory recursively to include all subdirectories
-./localpics -indir /path/to/your/media -recursive
 ```
 
 After starting, open the displayed URL in your browser to view your files.
@@ -61,7 +58,7 @@ After starting, open the displayed URL in your browser to view your files.
 | `-outdir` | Optional. Directory to write HTML and JSON files |
 | `-delete` | Enable file deletion API (default: false) |
 | `-host` | Host address to serve on (default: localhost:8080) |
-| `-recursive` | Scan directory recursively (default: false) |
+| `-recursive` | Scan directory recursively (default: true) |
 | `-v` | Print version information and exit |
 ## 🏗️ Building from Source
 
