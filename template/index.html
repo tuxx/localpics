@@ -89,6 +89,24 @@
       </div>
     </div>
 
+    <!-- Video Modal -->
+    <div class="modal" id="videoModal" onclick="hideModal('videoModal', event)">
+      <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-header">
+          <h3 id="videoModalTitle">Video Playback</h3>
+          <div class="modal-video-info">
+            <span id="videoModalSize"></span>
+            <a id="videoDownloadBtn" href="#" download class="download-button"
+              >Download</a
+            >
+          </div>
+        </div>
+        <div class="modal-body video-modal-body">
+          <video id="modalVideo" controls></video>
+        </div>
+      </div>
+    </div>
+
     <button class="top-button" onclick="scrollToTop()">Back to Top</button>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>

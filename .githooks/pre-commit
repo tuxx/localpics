@@ -3,9 +3,14 @@
 echo "🔧 Running go fmt on staged Go files..."
 
 staged_go_files=$(git diff --cached --name-only --diff-filter=ACM | grep '\.go$')
+staged_js_files=$(git diff --cached --name-only --diff-filter=ACM | grep '\.js$')
+staged_css_files=$(git diff --cached --name-only --diff-filter=ACM | grep '\.css$')
+staged_html_files=$(git diff --cached --name-only --diff-filter=ACM | grep '\.html$')
 
-formatted_any=0
+formatted_go=0
+formatted_prettier=0
 
+# Format Go files
 for file in $staged_go_files; do
     if [ -f "$file" ]; then
         original_hash=$(git hash-object "$file")
@@ -14,31 +19,54 @@ for file in $staged_go_files; do
         if [ "$original_hash" != "$new_hash" ]; then
             git add "$file"
             echo "✨ Formatted and re-staged: $file"
-            formatted_any=1
+            formatted_go=1
         fi
     fi
 done
 
-if [ "$formatted_any" -eq 1 ]; then
+# Check if prettier is installed
+if ! command -v prettier &> /dev/null; then
+    echo "⚠️ Prettier is not installed. Skipping JavaScript/CSS/HTML formatting."
+else
+    # Format JavaScript files
+    for file in $staged_js_files; do
+        if [ -f "$file" ]; then
+            echo "✨ Running prettier on: $file"
+            prettier --write "$file" > /dev/null
+            git add "$file"
+            formatted_prettier=1
+        fi
+    done
+
+    # Format CSS files
+    for file in $staged_css_files; do
+        if [ -f "$file" ]; then
+            echo "✨ Running prettier on: $file"
+            prettier --write "$file" > /dev/null
+            git add "$file"
+            formatted_prettier=1
+        fi
+    done
+
+    # Format HTML files
+    for file in $staged_html_files; do
+        if [ -f "$file" ]; then
+            echo "✨ Running prettier on: $file"
+            prettier --parser html --write "$file" > /dev/null
+            git add "$file"
+            formatted_prettier=1
+        fi
+    done
+fi
+
+# Set flags for prepare-commit-msg
+if [ "$formatted_go" -eq 1 ]; then
     echo "go fmt was applied." > .git/.gofmt-flag
 fi
 
-echo "🔧 Checking for staged template/index.html..."
-
-if git diff --cached --name-only --diff-filter=ACM | grep -q "^template/index\.html$"; then
-    if ! command -v prettier &> /dev/null; then
-        echo "❌ Prettier is not installed. Please install it."
-        exit 1
-    fi
-
-    if [ -f template/index.template ]; then
-        echo "✨ Running prettier on template/index.html..."
-        prettier --parser html --write template/index.html > /dev/null
-        git add template/index.html
-        echo "prettier was applied." > .git/.prettier-flag
-    fi
+if [ "$formatted_prettier" -eq 1 ]; then
+    echo "prettier was applied." > .git/.prettier-flag
 fi
 
 echo "✅ Formatting complete."
 exit 0
-

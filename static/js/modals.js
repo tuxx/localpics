@@ -292,4 +292,20 @@ function hideModal(modalId, event) {
   if (event.target.id === modalId || event.target.classList.contains("modal")) {
     document.getElementById(modalId).style.display = "none";
   }
+  // Stop video playback if video modal is closed
+  if (modalId === "videoModal") {
+    stopVideoPlayback();
+  }
+}
+
+/**
+ * Stop video playback and clear the video source when modal is closed
+ * Prevents memory leaks by ensuring the video element doesn't retain references to large video files
+ */
+function stopVideoPlayback() {
+  const videoPlayer = document.getElementById("modalVideo");
+  if (videoPlayer) {
+    videoPlayer.pause();
+    videoPlayer.src = ""; // Clear source to free memory
+  }
 }

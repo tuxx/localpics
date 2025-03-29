@@ -39,9 +39,6 @@
   margin-top: 0.2rem;
 }
 
-body[data-category="video"] .container {
-  column-count: 2 !important; /* Force 2 columns for videos */
-}
 /* Media queries */
 @media (max-width: 768px) {
   .container.zoom-xs {
@@ -61,8 +58,12 @@ body[data-category="video"] .container {
     column-count: 1;
   }
 
-  body[data-category="video"] .container {
-    column-count: 1 !important; /* Single column on small screens */
+  .video-placeholder .video-play-button {
+    font-size: 2rem;
+  }
+
+  .video-placeholder .video-info {
+    font-size: 0.8rem;
   }
 
   /* Mobile responsive table */

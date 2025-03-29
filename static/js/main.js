@@ -78,6 +78,7 @@ function setupKeyboardNavigation() {
     if (e.key === "Escape") {
       document.getElementById("imageModal").style.display = "none";
       document.getElementById("fileModal").style.display = "none";
+      document.getElementById("videoModal").style.display = "none";
     }
 
     // Arrow keys - navigate images when image modal is open

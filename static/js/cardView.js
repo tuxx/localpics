@@ -28,7 +28,7 @@ function createCardElement(file, i, startIndex) {
       appendImageContent(div, file, startIndex + i);
       break;
     case "video":
-      div.innerHTML += `<video controls src="${file.path}" preload="metadata"></video>`;
+      appendVideoContent(div, file, startIndex + i);
       break;
     case "audio":
       div.innerHTML += `<audio controls src="${file.path}" preload="metadata"></audio>`;
@@ -272,4 +272,80 @@ function renderCardView(container, slice, startIndex) {
     const div = createCardElement(file, i, startIndex);
     container.appendChild(div);
   }
+}
+
+/**
+ * Append video content to a card with a placeholder instead of embedding video directly
+ * @param {HTMLElement} div - Card element
+ * @param {Object} file - File data
+ * @param {number} videoIndex - Index for the video
+ */
+function appendVideoContent(div, file, videoIndex) {
+  // Create container
+  const videoContainer = document.createElement("div");
+  videoContainer.className = "video-container";
+
+  // Create a visually pleasing placeholder without loading the actual video
+  const placeholder = document.createElement("div");
+  placeholder.className = "video-placeholder";
+
+  // Extract name without extension for display
+  const fileName = file.name.split(".").slice(0, -1).join(".");
+
+  // Create a color based on the file name for visual variety
+  const hue = generateConsistentHue(fileName);
+  placeholder.style.backgroundColor = `hsl(${hue}, 75%, 25%)`;
+
+  placeholder.innerHTML = `
+    <div class="video-size-badge">${formatFileSize(file.size)}</div>
+    <div class="video-name-overlay">${fileName}</div>
+    <div class="video-play-button">▶</div>
+    <div class="video-info">Click to play</div>
+  `;
+
+  // Set click handler to play video on demand
+  placeholder.onclick = function () {
+    showVideoModal(file, videoIndex);
+  };
+
+  videoContainer.appendChild(placeholder);
+  div.appendChild(videoContainer);
+}
+
+/**
+ * Generate a consistent hue from a string for color variety
+ * @param {string} str - String to generate color from
+ * @returns {number} Hue value (0-360)
+ */
+function generateConsistentHue(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return hash % 360;
+}
+
+/**
+ * Show video modal for on-demand playback
+ * @param {Object} file - File data
+ * @param {number} videoIndex - Index of the video in data array
+ */
+function showVideoModal(file, videoIndex) {
+  const modal = document.getElementById("videoModal");
+  const videoPlayer = document.getElementById("modalVideo");
+
+  // Set video source
+  videoPlayer.src = file.path;
+  document.getElementById("videoDownloadBtn").href = file.path;
+
+  // Show file details
+  document.getElementById("videoModalTitle").textContent = file.name;
+  document.getElementById("videoModalSize").textContent = formatFileSize(
+    file.size,
+  );
+
+  modal.style.display = "flex";
+
+  // Auto-play when opened
+  videoPlayer.play().catch((e) => console.log("Autoplay prevented:", e));
 }

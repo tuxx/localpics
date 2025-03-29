@@ -12,6 +12,10 @@
   column-count: 2;
 }
 
+.container.grid-1 {
+  column-count: 1;
+}
+
 /* Modal layout */
 .modal {
   display: none;

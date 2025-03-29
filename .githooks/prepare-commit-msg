@@ -1,14 +1,14 @@
 #!/bin/bash
 
-# Only append note if gofmt or prettier flag is present
+# Append note if formatting was applied
 if [ -f .git/.gofmt-flag ]; then
     echo "" >> "$1"
-    echo "[auto] go fmt applied to staged files" >> "$1"
+    echo "[auto] go fmt applied to staged Go files" >> "$1"
     rm .git/.gofmt-flag
 fi
 
 if [ -f .git/.prettier-flag ]; then
     echo "" >> "$1"
-    echo "[auto] prettier applied to template/index.html" >> "$1"
+    echo "[auto] prettier applied to JavaScript, CSS, and HTML files" >> "$1"
     rm .git/.prettier-flag
 fi

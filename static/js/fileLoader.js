@@ -235,48 +235,24 @@ async function load(t) {
  * @param {string} t - File type
  */
 function setupCardView(container, t) {
-  // Get references to zoom buttons
-  const zoomInBtn = document.querySelector('a[onclick="zoomIn()"]');
-  const zoomOutBtn = document.querySelector('a[onclick="zoomOut()"]');
-
-  // Handle video category specifically
-  if (t === "video") {
-    // Force 2 columns for videos
+  // Apply grid layout based on content type
+  if (t === "text" || t === "code") {
     container.classList.add("grid-2");
-    // Force a fixed zoom level
-    currentZoom = "md";
-    // Disable zoom buttons
-    zoomInBtn.classList.add("disabled");
-    zoomOutBtn.classList.add("disabled");
-    zoomInBtn.style.pointerEvents = "none";
-    zoomOutBtn.style.pointerEvents = "none";
-  } else if (t === "text" || t === "code" || t === "pdf") {
-    container.classList.add("grid-2");
-    // Re-enable zoom buttons
-    zoomInBtn.classList.remove("disabled");
-    zoomOutBtn.classList.remove("disabled");
-    zoomInBtn.style.pointerEvents = "auto";
-    zoomOutBtn.style.pointerEvents = "auto";
+  } else if (t === "pdf") {
+    container.classList.add("grid-1");
   } else {
     container.classList.add("grid-4");
-    // Re-enable zoom buttons
-    zoomInBtn.classList.remove("disabled");
-    zoomOutBtn.classList.remove("disabled");
-    zoomInBtn.style.pointerEvents = "auto";
-    zoomOutBtn.style.pointerEvents = "auto";
   }
 
   // Add zoom class
   container.classList.add("zoom-" + currentZoom);
 
-  // Now show loading indicator for card view
+  // Show loading indicator for card view
   container.innerHTML =
     '<div class="loading-container"><div class="spinner"></div><p>Loading files...</p></div>';
 
-  // Skip updateZoomButtons() for videos as it would re-enable them
-  if (t !== "video") {
-    updateZoomButtons();
-  }
+  // Update zoom buttons state
+  updateZoomButtons();
 }
 /**
  * Render files
