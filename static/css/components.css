@@ -1,0 +1,192 @@
+/* Component styles */
+.file-table {
+  border-collapse: collapse;
+  margin-top: 1rem;
+  width: 100%;
+}
+
+.file-table th,
+.file-table td {
+  border: 1px solid #ccc;
+  padding: 6px 10px;
+  text-align: left;
+}
+
+.file-table th {
+  background: #f0f0f0;
+  position: sticky;
+  top: 56px; /* Match the height of the nav bar */
+  z-index: 10;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.file-table tr:hover {
+  background-color: #f9f9f9;
+}
+
+/* File cards */
+.file-card {
+  break-inside: avoid;
+  page-break-inside: avoid; /* For older browsers */
+  -webkit-column-break-inside: avoid; /* For Safari */
+  position: relative;
+  height: auto; /* Let the content determine height */
+  min-height: 100px; /* Ensure a minimum height */
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 1rem;
+}
+
+.file-card img,
+.file-card video {
+  width: 100%;
+  border-radius: 4px;
+}
+
+.file-card audio {
+  width: 100%;
+  margin: 10px 0;
+}
+
+.file-card iframe {
+  width: 100%;
+  height: 300px;
+  border: none;
+}
+
+.file-card pre {
+  background: #f0f0f0;
+  padding: 0.5rem;
+  border-radius: 4px;
+  overflow: auto;
+  max-height: 400px;
+  min-height: 200px;
+}
+
+.file-card .text-preview,
+.file-card .code-preview {
+  min-height: 200px;
+  max-height: 400px;
+  overflow: auto;
+}
+
+.file-card .name {
+  font-weight: bold;
+  margin-top: 0.5rem;
+  word-break: break-word;
+}
+
+.file-card .info {
+  font-size: 0.85rem;
+  color: #666;
+  margin-top: 0.3rem;
+}
+
+.file-card .view-full,
+.file-card .download {
+  display: inline-block;
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  text-decoration: underline;
+  color: #0077cc;
+  cursor: pointer;
+  margin-right: 1rem;
+}
+
+.file-card .image-container {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16/9;
+  background-color: #f0f0f0;
+  overflow: hidden;
+  border-radius: 4px;
+  margin-bottom: 0.5rem;
+}
+
+.file-card .image-container img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: opacity 0.3s ease;
+}
+
+.file-card .image-container .placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: #999;
+  font-size: 0.9rem;
+}
+
+.file-card .image-container .spinner {
+  width: 30px;
+  height: 30px;
+  border-width: 3px;
+}
+
+/* File Icons and Buttons */
+.file-icon {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 1rem auto;
+  background: #f0f0f0;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+}
+
+.download-button {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  background: #f0f0f0;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  text-decoration: none;
+  color: #333;
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+}
+
+.download-button:hover {
+  background: #e0e0e0;
+}
+
+/* Table view components */
+.table-file-link {
+  color: #0066cc;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  font-weight: 500;
+}
+
+.table-file-link:hover {
+  text-decoration: underline;
+}
+
+.download-icon {
+  margin-right: 8px;
+  opacity: 0.7;
+}
+
+.play-button {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 5px 10px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.play-button:hover {
+  background-color: #eee;
+}

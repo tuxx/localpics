@@ -1,0 +1,94 @@
+/* Responsive styles */
+/* Custom classes for different zoom levels */
+.container.zoom-xs {
+  column-count: 8;
+}
+
+.container.zoom-sm {
+  column-count: 6;
+}
+
+.container.zoom-md {
+  column-count: 4;
+}
+
+.container.zoom-lg {
+  column-count: 2;
+}
+
+.container.zoom-xl {
+  column-count: 1;
+}
+
+/* Adjust file cards at different zoom levels */
+.zoom-xs .file-card .name {
+  font-size: 0.7rem;
+  margin-top: 0.2rem;
+}
+
+.zoom-xs .file-card .info,
+.zoom-sm .file-card .info {
+  display: none;
+}
+
+.zoom-xs .file-card .view-full,
+.zoom-xs .file-card .download,
+.zoom-sm .file-card .view-full,
+.zoom-sm .file-card .download {
+  font-size: 0.7rem;
+  margin-top: 0.2rem;
+}
+
+body[data-category="video"] .container {
+  column-count: 2 !important; /* Force 2 columns for videos */
+}
+/* Media queries */
+@media (max-width: 768px) {
+  .container.zoom-xs {
+    column-count: 4;
+  }
+
+  .container.zoom-sm {
+    column-count: 3;
+  }
+
+  .container.zoom-md {
+    column-count: 2;
+  }
+
+  .container.zoom-lg,
+  .container.zoom-xl {
+    column-count: 1;
+  }
+
+  body[data-category="video"] .container {
+    column-count: 1 !important; /* Single column on small screens */
+  }
+
+  /* Mobile responsive table */
+  .container .file-table {
+    font-size: 0.85rem;
+  }
+
+  .container .file-table th,
+  .container .file-table td {
+    padding: 8px 10px;
+  }
+
+  /* Make date column smaller on mobile */
+  .container .file-table th:nth-child(3),
+  .container .file-table td:nth-child(3) {
+    max-width: 80px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Hide some columns on very small screens */
+  .container .file-table th:nth-child(3),
+  .container .file-table td:nth-child(3) {
+    display: none;
+  }
+}

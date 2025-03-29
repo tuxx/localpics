@@ -22,6 +22,9 @@ import (
 //go:embed template/index.html
 var templateFS embed.FS
 
+//go:embed static/css static/js
+var staticFS embed.FS
+
 // Version information
 var (
 	Version   = "dev"
@@ -284,6 +287,40 @@ func FileDeleteHandler(inputDir string, allowDelete bool) http.HandlerFunc {
 	}
 }
 
+func copyStaticFiles(outputDir string) error {
+	// Walk through embedded static files and copy them to the output directory
+	return fs.WalkDir(staticFS, "static", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// Skip the root directory
+		if path == "static" {
+			return nil
+		}
+
+		// Create destination path
+		dstPath := filepath.Join(outputDir, path)
+
+		// Create directories
+		if d.IsDir() {
+			return os.MkdirAll(dstPath, fs.ModePerm)
+		}
+
+		// Copy files
+		data, err := staticFS.ReadFile(path)
+		if err != nil {
+			return fmt.Errorf("failed to read embedded file %s: %w", path, err)
+		}
+
+		if err := os.WriteFile(dstPath, data, 0644); err != nil {
+			return fmt.Errorf("failed to write file %s: %w", dstPath, err)
+		}
+
+		return nil
+	})
+}
+
 func main() {
 	inputDir := flag.String("indir", "", "Directory to scan for media files")
 	outputDir := flag.String("outdir", "", "Directory to write HTML and JSON files (optional)")
@@ -322,6 +359,16 @@ func main() {
 	if err := os.MkdirAll(*outputDir, fs.ModePerm); err != nil {
 		log.Fatalf("failed to create output directory: %v", err)
 	}
+	staticDir := filepath.Join(*outputDir, "static")
+	cssDir := filepath.Join(staticDir, "css")
+	jsDir := filepath.Join(staticDir, "js")
+
+	if err := os.MkdirAll(cssDir, fs.ModePerm); err != nil {
+		log.Fatalf("failed to create CSS directory: %v", err)
+	}
+	if err := os.MkdirAll(jsDir, fs.ModePerm); err != nil {
+		log.Fatalf("failed to create JS directory: %v", err)
+	}
 
 	files, err := scanDirectory(*inputDir, "/media", *recursive)
 	if err != nil {
@@ -341,12 +388,17 @@ func main() {
 		cleanupOnExit(*outputDir)
 	}
 
+	if err := copyStaticFiles(*outputDir); err != nil {
+		log.Fatalf("failed to copy static files: %v", err)
+	}
+
 	// Set up HTTP server
 	if *allowDelete {
 		fmt.Println("⚠️ WARNING: File deletion API is enabled")
 		http.Handle("/delete/", FileDeleteHandler(*inputDir, true))
 	}
 
+	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir(filepath.Join(*outputDir, "static")))))
 	http.Handle("/media/", http.StripPrefix("/media/", http.FileServer(http.Dir(*inputDir))))
 	http.Handle("/", http.FileServer(http.Dir(*outputDir)))
 
