@@ -75,11 +75,13 @@
 
       .file-card {
         break-inside: avoid;
-        background: white;
-        margin-bottom: 1rem;
-        padding: 0.5rem;
-        border-radius: 6px;
-        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+        page-break-inside: avoid; /* For older browsers */
+        -webkit-column-break-inside: avoid; /* For Safari */
+        position: relative;
+        height: auto; /* Let the content determine height */
+        min-height: 100px; /* Ensure a minimum height */
+        display: flex;
+        flex-direction: column;
       }
       .file-card img,
       .file-card video {
@@ -131,6 +133,41 @@
         color: #0077cc;
         cursor: pointer;
         margin-right: 1rem;
+      }
+      .file-card .image-container {
+        position: relative;
+        width: 100%;
+        aspect-ratio: 16/9;
+        background-color: #f0f0f0;
+        overflow: hidden;
+        border-radius: 4px;
+        margin-bottom: 0.5rem;
+      }
+
+      .file-card .image-container img {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: opacity 0.3s ease;
+      }
+
+      .file-card .image-container .placeholder {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        height: 100%;
+        color: #999;
+        font-size: 0.9rem;
+      }
+
+      .file-card .image-container .spinner {
+        width: 30px;
+        height: 30px;
+        border-width: 3px;
       }
 
       .modal {
@@ -387,12 +424,16 @@
       let loadingMore = false;
       let allFileStats = {};
       let endReached = false;
+      let imageObserver;
+      let resizeObserver;
 
       // Fetch all stats on page load
       window.addEventListener("DOMContentLoaded", function () {
         fetchAllStats().then(() => {
           updateNavigation();
         });
+        setupImageObserver();
+        setupResizeObserver();
       });
 
       // Close modals with Escape key
@@ -513,17 +554,17 @@
         );
 
         let html = `
-        <h3>File Statistics</h3>
-        <table class="file-table">
-          <thead>
-            <tr>
-              <th>Type</th>
-              <th>Count</th>
-              <th>Percentage</th>
-            </tr>
-          </thead>
-          <tbody>
-      `;
+              <h3>File Statistics</h3>
+              <table class="file-table">
+                <thead>
+                  <tr>
+                    <th>Type</th>
+                    <th>Count</th>
+                    <th>Percentage</th>
+                  </tr>
+                </thead>
+                <tbody>
+            `;
 
         types.forEach((type) => {
           const stat = allFileStats[type];
@@ -531,26 +572,26 @@
             const percentage =
               totalCount > 0 ? ((stat.count / totalCount) * 100).toFixed(1) : 0;
             html += `
-            <tr>
-              <td>${type.charAt(0).toUpperCase() + type.slice(1)}</td>
-              <td>${stat.count}</td>
-              <td>${percentage}%</td>
-            </tr>
-          `;
+                  <tr>
+                    <td>${type.charAt(0).toUpperCase() + type.slice(1)}</td>
+                    <td>${stat.count}</td>
+                    <td>${percentage}%</td>
+                  </tr>
+                `;
           }
         });
 
         html += `
-          </tbody>
-          <tfoot>
-            <tr>
-              <td><strong>Total</strong></td>
-              <td><strong>${totalCount}</strong></td>
-              <td>100%</td>
-            </tr>
-          </tfoot>
-        </table>
-      `;
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td><strong>Total</strong></td>
+                    <td><strong>${totalCount}</strong></td>
+                    <td>100%</td>
+                  </tr>
+                </tfoot>
+              </table>
+            `;
 
         document.getElementById("fileStats").innerHTML = html;
       }
@@ -570,6 +611,49 @@
             a.classList.add("active");
           }
         });
+      }
+      function setupImageObserver() {
+        // Check if IntersectionObserver is supported
+        if ("IntersectionObserver" in window) {
+          imageObserver = new IntersectionObserver(
+            (entries, observer) => {
+              entries.forEach((entry) => {
+                if (entry.isIntersecting) {
+                  const img = entry.target;
+                  const src = img.dataset.src;
+
+                  if (src) {
+                    img.src = src;
+                    img.removeAttribute("data-src");
+                    observer.unobserve(img);
+                  }
+                }
+              });
+            },
+            {
+              rootMargin: "200px 0px", // Start loading when within 200px of viewport
+              threshold: 0.01,
+            },
+          );
+        }
+      }
+      function setupResizeObserver() {
+        if ("ResizeObserver" in window) {
+          resizeObserver = new ResizeObserver((entries) => {
+            const container = document.getElementById("container");
+
+            // Only apply minimal changes to trigger reflow without visible disruption
+            if (container) {
+              // Apply a minimal style change that forces reflow but doesn't visually disrupt
+              container.style.minHeight = container.offsetHeight + "px";
+
+              // Remove the forced minHeight after a short delay
+              setTimeout(() => {
+                container.style.minHeight = "";
+              }, 50);
+            }
+          });
+        }
       }
 
       // Load a category
@@ -601,10 +685,10 @@
           await render();
         } catch (error) {
           container.innerHTML = `<div class="error-container">
-          <h3>Error Loading Files</h3>
-          <p>${error.message}</p>
-          <button onclick="load('${t}')">Try Again</button>
-        </div>`;
+                <h3>Error Loading Files</h3>
+                <p>${error.message}</p>
+                <button onclick="load('${t}')">Try Again</button>
+              </div>`;
         }
       }
 
@@ -625,16 +709,71 @@
 
           // Add file name and date/size info
           div.innerHTML = `
-          <div class="name">${file.name}</div>
-          <div class="info">
-            Size: ${formatFileSize(file.size)} • 
-            Modified: ${new Date(file.modified).toLocaleString()}
-          </div>
-        `;
+                <div class="name">${file.name}</div>
+                <div class="info">
+                  Size: ${formatFileSize(file.size)} •
+                  Modified: ${new Date(file.modified).toLocaleString()}
+                </div>
+              `;
 
           // Render different file types
           if (file.type === "image") {
-            div.innerHTML += `<img src="${file.path}" onclick="showImageModal(${index + i})" loading="lazy">`;
+            const imageContainer = document.createElement("div");
+            imageContainer.className = "image-container";
+
+            // Set a fixed aspect ratio for the container to prevent layout shifts
+            const aspectRatio = getImageAspectRatio(file);
+            imageContainer.style.aspectRatio = aspectRatio;
+
+            // Add loading placeholder
+            const placeholder = document.createElement("div");
+            placeholder.className = "placeholder";
+            placeholder.innerHTML = '<div class="spinner"></div>';
+            imageContainer.appendChild(placeholder);
+
+            // Create image with improved loading
+            const img = document.createElement("img");
+            img.style.opacity = "0"; // Start hidden
+            img.setAttribute("loading", "lazy");
+            img.dataset.src = file.path; // Store path but don't load immediately
+            img.onclick = function () {
+              showImageModal(index + i);
+            };
+
+            // Add load event handler
+            img.onload = function () {
+              // Use a fade-in transition
+              placeholder.style.display = "none";
+
+              // Apply a smooth transition for the opacity
+              img.style.transition = "opacity 0.3s ease";
+              img.style.opacity = "1";
+
+              // Only observe for a very short time to minimize disruption
+              if (resizeObserver) {
+                resizeObserver.observe(imageContainer);
+                setTimeout(() => {
+                  resizeObserver.unobserve(imageContainer);
+                }, 50); // Shorter time to reduce impact
+              }
+            };
+
+            // Add error handler
+            img.onerror = function () {
+              placeholder.innerHTML = "❌ Error loading image";
+            };
+
+            imageContainer.appendChild(img);
+            div.appendChild(imageContainer);
+
+            // Use the observer if available, otherwise fallback to setTimeout
+            if (imageObserver) {
+              imageObserver.observe(img);
+            } else {
+              setTimeout(() => {
+                img.src = img.dataset.src;
+              }, 10);
+            }
           } else if (file.type === "video") {
             div.innerHTML += `<video controls src="${file.path}" preload="metadata"></video>`;
           } else if (file.type === "audio") {
@@ -889,10 +1028,15 @@
         } catch (error) {
           console.error("Error loading file:", error);
           modalBody.innerHTML = `<div class="error-container">
-          <h3>Error Loading File</h3>
-          <p>${error.message}</p>
-        </div>`;
+                <h3>Error Loading File</h3>
+                <p>${error.message}</p>
+              </div>`;
         }
+      }
+      function getImageAspectRatio(file) {
+        // We don't know the actual dimensions yet, so use
+        // a reasonable default aspect ratio
+        return 3 / 2; // Common aspect ratio for photos (landscape orientation)
       }
       // Show image modal
       function showImageModal(i) {
@@ -919,7 +1063,6 @@
           document.getElementById("modalDetails").style.display = "none";
         }
       }
-
       // Navigate between images in modal
       function navigateModal(dir) {
         if (modalIndex < 0) return;
