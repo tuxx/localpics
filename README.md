@@ -40,6 +40,15 @@ Visit the [Releases page](https://github.com/tuxx/localpics/releases) and downlo
 ## 🖥️ Usage
 
 ```bash
+# Create a default configuration file
+./localpics -create-config
+
+# Use a custom configuration file
+./localpics -config /path/to/my/config.json
+
+# Command line flags override config file settings
+./localpics -config /path/to/config.json -host 192.168.1.100:8080
+
 # Basic usage (temporary output directory will be created)
 ./localpics -indir /path/to/your/media
 
@@ -65,6 +74,8 @@ After starting, open the displayed URL in your browser to view your files.
 
 | Option | Description |
 |--------|-------------|
+| `-config` | Path to config file (default is platform-specific) |
+| `-create-config` | Create a default config file and exit |
 | `-indir` | **Required**. Directory to scan for media files |
 | `-outdir` | Optional. Directory to write HTML and JSON files |
 | `-delete` | Enable file deletion API (default: false) |
@@ -75,6 +86,12 @@ After starting, open the displayed URL in your browser to view your files.
 | `-thumb-pregenerate` | Number of video thumbnails to pre-generate at startup (default: 50) |
 | `-log` | Enable debug logging (default: false) |
 | `-v` | Print version information and exit |
+
+### Default config location
+- **Windows**: `%APPDATA%\localpics\localpics.json`
+- **macOS**: `~/Library/Application Support/localpics/localpics.json`
+- **Linux**: `~/.config/localpics/localpics.json`
+
 ## 🏗️ Building from Source
 
 ### Prerequisites
