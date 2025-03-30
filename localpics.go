@@ -14,7 +14,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
-	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -472,139 +471,98 @@ func main() {
 		os.Exit(0)
 	}
 
-	// Check if config file exists before trying to load it
-	configFileExists := false
-	if _, err := os.Stat(*configPath); err == nil {
-		configFileExists = true
+	// Load config (or default if not exists)
+	config, err := LoadConfig(*configPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error loading config file: %v\n", err)
 	}
 
-	// Try to use config file if it exists
-	if configFileExists {
-		config, err := LoadConfig(*configPath)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error loading config file: %v\n", err)
-		} else {
-			fmt.Printf("Using configuration from: %s\n", *configPath)
-
-			// Create a map of flag pointers to config fields
-			flagMapping := map[string]interface{}{
-				"indir":             &config.InputDir,
-				"outdir":            &config.OutputDir,
-				"delete":            &config.AllowDelete,
-				"host":              &config.Host,
-				"recursive":         &config.Recursive,
-				"thumbnails":        &config.Thumbnails,
-				"thumb-cache":       &config.ThumbnailCache,
-				"thumb-pregenerate": &config.PreGenerate,
-				"log":               &config.DebugLog,
-			}
-
-			// Override config with command-line flags only if explicitly provided
-			flag.Visit(func(f *flag.Flag) {
-				if ptr, exists := flagMapping[f.Name]; exists {
-					// Set the config value from the flag
-					switch v := ptr.(type) {
-					case *string:
-						*v = f.Value.String()
-					case *bool:
-						boolVal, _ := strconv.ParseBool(f.Value.String())
-						*v = boolVal
-					case *int:
-						intVal, _ := strconv.Atoi(f.Value.String())
-						*v = intVal
-					}
-				}
-			})
-
-			// Update the original flag variables to use in the rest of the program
-			*inputDir = config.InputDir
-			*outputDir = config.OutputDir
-			*allowDelete = config.AllowDelete
-			*hostAddr = config.Host
-			*recursive = config.Recursive
-			*enableThumbnails = config.Thumbnails
-			*thumbnailCache = config.ThumbnailCache
-			*preGenerate = config.PreGenerate
-			*debugLog = config.DebugLog
+	// Override config values with command-line flags if they were explicitly set
+	flag.Visit(func(f *flag.Flag) {
+		switch f.Name {
+		case "indir":
+			config.InputDir = *inputDir
+		case "outdir":
+			config.OutputDir = *outputDir
+		case "delete":
+			config.AllowDelete = *allowDelete
+		case "host":
+			config.Host = *hostAddr
+		case "recursive":
+			config.Recursive = *recursive
+		case "thumbnails":
+			config.Thumbnails = *enableThumbnails
+		case "thumb-cache":
+			config.ThumbnailCache = *thumbnailCache
+		case "thumb-pregenerate":
+			config.PreGenerate = *preGenerate
+		case "log":
+			config.DebugLog = *debugLog
 		}
+	})
+
+	debugLogging = config.DebugLog
+
+	// Initialize thumbnails if enabled
+	if config.Thumbnails {
+		InitThumbnails(true, config.ThumbnailCache, config.PreGenerate, config.DebugLog)
 	}
 
-	// Initialize thumbnail system BEFORE generating any HTML
-	thumbnailsEnabled := false
-	if *enableThumbnails {
-		InitThumbnails(true, *thumbnailCache, *preGenerate, *debugLog)
-		thumbnailsEnabled = true // Explicit local variable
-	}
-
-	if *inputDir == "" {
+	if config.InputDir == "" {
+		fmt.Fprintln(os.Stderr, "Error: input directory (-indir) not specified and not set in config file.")
 		flag.Usage()
 		os.Exit(1)
 	}
 
 	tempOut := false
-	if *outputDir == "" {
+	if config.OutputDir == "" {
 		temp, err := os.MkdirTemp("", "localpics-*")
 		if err != nil {
 			log.Fatalf("failed to create temporary output directory: %v", err)
 		}
-		*outputDir = temp
+		config.OutputDir = temp
 		tempOut = true
 	}
 
-	if err := os.MkdirAll(*outputDir, fs.ModePerm); err != nil {
+	if err := os.MkdirAll(config.OutputDir, fs.ModePerm); err != nil {
 		log.Fatalf("failed to create output directory: %v", err)
 	}
-	staticDir := filepath.Join(*outputDir, "static")
-	cssDir := filepath.Join(staticDir, "css")
-	jsDir := filepath.Join(staticDir, "js")
 
-	if err := os.MkdirAll(cssDir, fs.ModePerm); err != nil {
-		log.Fatalf("failed to create CSS directory: %v", err)
-	}
-	if err := os.MkdirAll(jsDir, fs.ModePerm); err != nil {
-		log.Fatalf("failed to create JS directory: %v", err)
-	}
-
-	files, err := scanDirectory(*inputDir, "/media", *recursive)
+	files, err := scanDirectory(config.InputDir, "/media", config.Recursive)
 	if err != nil {
 		log.Fatalf("failed to scan directory: %v", err)
 	}
 
-	if err := writeJSONFiles(files, *outputDir); err != nil {
+	if err := writeJSONFiles(files, config.OutputDir); err != nil {
 		log.Fatalf("failed to write JSON files: %v", err)
 	}
 
-	if err := generateHTML(*outputDir, *allowDelete, thumbnailsEnabled, *debugLog); err != nil {
+	if err := generateHTML(config.OutputDir, config.AllowDelete, config.Thumbnails, config.DebugLog); err != nil {
 		log.Fatalf("failed to write HTML file: %v", err)
 	}
 
-	fmt.Println("Static directory index generated in:", *outputDir)
-	if tempOut {
-		cleanupOnExit(*outputDir)
-	}
-
-	if err := copyStaticFiles(*outputDir); err != nil {
+	if err := copyStaticFiles(config.OutputDir); err != nil {
 		log.Fatalf("failed to copy static files: %v", err)
 	}
 
-	// Set up HTTP server
-	if *allowDelete {
+	if tempOut {
+		cleanupOnExit(config.OutputDir)
+	}
+
+	if config.AllowDelete {
 		fmt.Println("⚠️ WARNING: File deletion API is enabled")
-		http.Handle("/delete/", FileDeleteHandler(*inputDir, true))
+		http.Handle("/delete/", FileDeleteHandler(config.InputDir, true))
 	}
 
-	// Add thumbnail handler if enabled
-	if thumbnailsEnabled {
-		http.Handle("/thumbnail/", ThumbnailHandler(*inputDir))
-
-		// Start pre-generating thumbnails for videos
-		go PreGenerateThumbnails(files, *inputDir)
+	if config.Thumbnails {
+		http.Handle("/thumbnail/", ThumbnailHandler(config.InputDir))
+		go PreGenerateThumbnails(files, config.InputDir)
 	}
 
-	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir(filepath.Join(*outputDir, "static")))))
-	http.Handle("/media/", http.StripPrefix("/media/", http.FileServer(http.Dir(*inputDir))))
-	http.Handle("/", http.FileServer(http.Dir(*outputDir)))
+	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir(filepath.Join(config.OutputDir, "static")))))
+	http.Handle("/media/", http.StripPrefix("/media/", http.FileServer(http.Dir(config.InputDir))))
+	http.Handle("/", http.FileServer(http.Dir(config.OutputDir)))
 
-	fmt.Printf("Serving on http://%s\n", *hostAddr)
-	log.Fatal(http.ListenAndServe(*hostAddr, nil))
+	fmt.Printf("Serving on http://%s\n", config.Host)
+	log.Fatal(http.ListenAndServe(config.Host, nil))
 }
