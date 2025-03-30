@@ -15,11 +15,24 @@ let endReached = false;
 let imageObserver;
 let currentAudio = null;
 let resizeObserver;
+let thumbnailsEnabled = false;
+let debugLogging = false;
 let currentZoom = "md"; // Default zoom level: xs, sm, md, lg, xl
 const zoomLevels = ["xs", "sm", "md", "lg", "xl"];
+var thumbnailCache = {};
+var sharedThumbnails = {}; // Global cache of loaded thumbnails
+var firstThumbnailForSeries = {}; // Track the first thumbnail for each video series
 
 // Initialize application when DOM is loaded
 window.addEventListener("DOMContentLoaded", function () {
+  thumbnailsEnabled =
+    document.body.getAttribute("data-thumbnails-enabled") === "true";
+  debugLogging = document.body.getAttribute("data-debug-enabled") === "true";
+  window.debugLog = function (message, ...args) {
+    if (debugLogging) {
+      window.debugLog("[DEBUG]", message, ...args);
+    }
+  };
   initApp();
 });
 

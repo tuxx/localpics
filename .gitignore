@@ -29,3 +29,6 @@ build
 
 # backup files
 .bak
+
+# thumbnails cache directory
+thumbnails

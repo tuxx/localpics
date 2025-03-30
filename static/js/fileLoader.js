@@ -78,7 +78,10 @@ async function fetchAllStats() {
       types.map(async (t) => {
         try {
           const response = await fetch(t + ".json");
-          if (!response.ok) throw new Error(`HTTP error ${response.status}`);
+          if (!response.ok) {
+            // Just return zero count rather than throwing an error
+            return { type: t, count: 0 };
+          }
           const json = await response.json();
           return { type: t, count: json.length };
         } catch (error) {
@@ -88,6 +91,7 @@ async function fetchAllStats() {
       }),
     );
 
+    // Rest of the function remains the same
     allFileStats = results.reduce((acc, result) => {
       if (result.status === "fulfilled") {
         acc[result.value.type] = result.value;
@@ -102,7 +106,6 @@ async function fetchAllStats() {
     return {};
   }
 }
-
 /**
  * Display file statistics in a table
  */

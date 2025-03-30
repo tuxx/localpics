@@ -27,15 +27,21 @@ jobs:
       - name: Extract build metadata
         id: meta
         run: |
-          echo "VERSION=${GITHUB_REF##*/}" >> $GITHUB_ENV
+          # Remove the 'v' prefix from version for cleaner version string
+          echo "VERSION=${GITHUB_REF##*/v}" >> $GITHUB_ENV
           echo "COMMIT=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
           echo "DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_ENV
 
       - name: Build and Package
         id: build_step
         run: |
-          make release-all VERSION=$VERSION COMMIT=$COMMIT DATE=$DATE
-          make package VERSION=$VERSION COMMIT=$COMMIT DATE=$DATE
+          # Explicitly echo the version info to verify it's being set correctly
+          echo "Building version: $VERSION, commit: $COMMIT, date: $DATE"
+          
+          # Use the environment variables directly in the build commands
+          make release-all VERSION="$VERSION" COMMIT="$COMMIT" DATE="$DATE"
+          make package
+          
           echo "build_success=true" >> $GITHUB_OUTPUT
         continue-on-error: true
 
@@ -83,4 +89,3 @@ jobs:
             build/release/*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-

@@ -285,7 +285,7 @@ function appendVideoContent(div, file, videoIndex) {
   const videoContainer = document.createElement("div");
   videoContainer.className = "video-container";
 
-  // Create a visually pleasing placeholder without loading the actual video
+  // Create a visually pleasing placeholder
   const placeholder = document.createElement("div");
   placeholder.className = "video-placeholder";
 
@@ -303,6 +303,81 @@ function appendVideoContent(div, file, videoIndex) {
     <div class="video-info">Click to play</div>
   `;
 
+  // Debug the thumbnail status
+  window.debugLog("Thumbnails enabled:", thumbnailsEnabled);
+
+  // Only try to load thumbnails if enabled on the server
+  if (thumbnailsEnabled) {
+    // Extract the video series name (e.g., "BigBuckBunny" from "BigBuckBunny-1280x720.mp4")
+    const fileBaseName = file.name.split(".")[0]; // Remove extension
+    const seriesMatch = fileBaseName.match(/^([A-Za-z]+)/);
+    const seriesName = seriesMatch ? seriesMatch[1] : fileBaseName;
+
+    // Get thumbnail URL for this specific video
+    const videoPathEncoded = encodeURIComponent(file.path.substring(7));
+    const thumbnailUrl = `/thumbnail/${videoPathEncoded}`;
+
+    // Check if we already have a thumbnail for this series
+    let useThumbnailUrl = thumbnailUrl;
+    if (firstThumbnailForSeries[seriesName]) {
+      // Use the first thumbnail from this series
+      useThumbnailUrl = firstThumbnailForSeries[seriesName];
+      window.debugLog(
+        `Using shared thumbnail for ${seriesName} series:`,
+        useThumbnailUrl,
+      );
+    } else {
+      // This is the first video of this series - remember its thumbnail
+      firstThumbnailForSeries[seriesName] = thumbnailUrl;
+      window.debugLog(
+        `First thumbnail for ${seriesName} series:`,
+        thumbnailUrl,
+      );
+    }
+
+    // Create and set up the thumbnail image
+    const thumbnailImg = document.createElement("img");
+    thumbnailImg.className = "video-thumbnail";
+    thumbnailImg.alt = fileName;
+    thumbnailImg.style.position = "absolute";
+    thumbnailImg.style.top = "0";
+    thumbnailImg.style.left = "0";
+    thumbnailImg.style.width = "100%";
+    thumbnailImg.style.height = "100%";
+    thumbnailImg.style.objectFit = "cover";
+    thumbnailImg.style.zIndex = "20";
+
+    // Check if this shared URL is already loaded
+    if (sharedThumbnails[useThumbnailUrl]) {
+      // Use already loaded thumbnail immediately
+      thumbnailImg.style.opacity = "0.85";
+      thumbnailImg.src = useThumbnailUrl;
+      placeholder.classList.add("loaded");
+    } else {
+      // First time loading this thumbnail
+      thumbnailImg.style.opacity = "0";
+      thumbnailImg.src = useThumbnailUrl;
+
+      thumbnailImg.onload = function () {
+        window.debugLog(`Thumbnail loaded for ${seriesName} series`);
+        this.style.opacity = "0.85";
+        placeholder.classList.add("loaded");
+
+        // Mark this URL as successfully loaded
+        sharedThumbnails[useThumbnailUrl] = true;
+      };
+
+      thumbnailImg.onerror = function () {
+        console.error(`Thumbnail failed to load for ${seriesName} series`);
+        placeholder.classList.add("loaded");
+      };
+    }
+
+    placeholder.appendChild(thumbnailImg);
+  } else {
+    placeholder.classList.add("loaded");
+  }
+
   // Set click handler to play video on demand
   placeholder.onclick = function () {
     showVideoModal(file, videoIndex);
@@ -311,7 +386,6 @@ function appendVideoContent(div, file, videoIndex) {
   videoContainer.appendChild(placeholder);
   div.appendChild(videoContainer);
 }
-
 /**
  * Generate a consistent hue from a string for color variety
  * @param {string} str - String to generate color from
@@ -347,5 +421,5 @@ function showVideoModal(file, videoIndex) {
   modal.style.display = "flex";
 
   // Auto-play when opened
-  videoPlayer.play().catch((e) => console.log("Autoplay prevented:", e));
+  videoPlayer.play().catch((e) => window.debugLog("Autoplay prevented:", e));
 }

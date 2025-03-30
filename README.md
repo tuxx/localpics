@@ -22,6 +22,7 @@ Just point it at a directory, and it instantly creates a beautiful, browser-base
 - 🖼️ **Media-specific viewers** for images, videos, audio, PDFs, and code files
 - 📊 **File categorization** by type (images, videos, audio, text, code, etc.)
 - 📷 **EXIF data extraction** for images with GPS location mapping
+- 🎞️ **Video thumbnails** with intelligent caching for faster browsing
 - 🔄 **Dynamic navigation** with keyboard shortcuts
 - 📝 **Code syntax highlighting** for various programming languages
 - 📦 **Single binary** with embedded template - no dependencies to install
@@ -31,6 +32,10 @@ Just point it at a directory, and it instantly creates a beautiful, browser-base
 ### Recommended: Download a Release
 
 Visit the [Releases page](https://github.com/tuxx/localpics/releases) and download the appropriate binary for your platform.
+
+### Optional Dependencies
+
+- FFmpeg (optional, required only for video thumbnail generation)
 
 ## 🖥️ Usage
 
@@ -46,6 +51,11 @@ Visit the [Releases page](https://github.com/tuxx/localpics/releases) and downlo
 
 # Serve on a specific IP address and port
 ./localpics -indir /path/to/your/media -host 0.0.0.0:8080
+# Enable video thumbnail generation (requires FFmpeg)
+./localpics -indir /path/to/your/media -thumbnails
+
+# Customize thumbnail caching
+./localpics -indir /path/to/your/media -thumbnails -thumb-cache /path/to/cache -thumb-pregenerate 100
 ```
 
 After starting, open the displayed URL in your browser to view your files.
@@ -59,6 +69,10 @@ After starting, open the displayed URL in your browser to view your files.
 | `-delete` | Enable file deletion API (default: false) |
 | `-host` | Host address to serve on (default: localhost:8080) |
 | `-recursive` | Scan directory recursively (default: true) |
+| `-thumbnails` | Enable video thumbnail generation (requires FFmpeg) |
+| `-thumb-cache` | Directory to store video thumbnails (default: "thumbnails") |
+| `-thumb-pregenerate` | Number of video thumbnails to pre-generate at startup (default: 50) |
+| `-log` | Enable debug logging (default: false) |
 | `-v` | Print version information and exit |
 ## 🏗️ Building from Source
 
@@ -66,6 +80,7 @@ After starting, open the displayed URL in your browser to view your files.
 
 - Go 1.16 or newer
 - Make (for using the Makefile)
+- FFmpeg (for video thumbnail support)
 
 ### Build Commands
 
@@ -91,7 +106,20 @@ make package
 - **Categories** - Browse files by type (images, videos, audio, etc.)
 - **Image Viewer** - View images with EXIF data, navigation, and download options
 - **Code Viewer** - Syntax-highlighted code with full-screen viewing
-- **Video/Audio** - Native HTML5 players for media files
+- **Video/Audio** - Native HTML5 players with thumbnail previews for videos
+- **Video Thumbnails** - Automatically generated previews for videos with intelligent caching
+
+## 🎞️ Video Thumbnail System
+
+LocalPics can now generate thumbnails for videos to provide a better browsing experience:
+
+- Automatically extracts a frame from each video to use as a thumbnail
+- Intelligently caches thumbnails to avoid regeneration
+- Shares thumbnails between similar videos (e.g., episodes of the same series)
+- Pre-generates thumbnails at startup (configurable number)
+- Enhanced UI with smooth loading animations
+
+This feature requires FFmpeg to be installed on your system.
 
 ## 🤝 Contributing
 
@@ -138,3 +166,4 @@ GPL-2.0 ensures that all modifications to the code remain free and open source.
 - Uses [Prism](https://prismjs.com/) for syntax highlighting
 - Uses [ExifJS](https://github.com/exif-js/exif-js) for EXIF extraction
 - Uses [Marked](https://marked.js.org/) for markdown rendering
+- Uses [FFmpeg](https://ffmpeg.org/) (via [ffmpeg-go](https://github.com/u2takey/ffmpeg-go)) for video thumbnail generation

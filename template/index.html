@@ -13,7 +13,10 @@
     <link rel="stylesheet" href="/static/css/layout.css" />
     <link rel="stylesheet" href="/static/css/responsive.css" />
   </head>
-  <body>
+  <body
+    data-thumbnails-enabled="{{.ThumbnailsEnabled}}"
+    data-debug-enabled="{{.DebugLogging}}"
+  >
     <div class="nav" id="navbar">
       <a onclick="showIntro()" class="active" data-category="home">🏠 Home</a>
       <a onclick="load('image')" data-category="image">Images</a>

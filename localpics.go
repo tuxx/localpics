@@ -44,8 +44,17 @@ type FileInfo struct {
 
 // TemplateData holds data to pass to the template
 type TemplateData struct {
-	AllowDelete bool
-	Version     string
+	AllowDelete       bool
+	Version           string
+	ThumbnailsEnabled bool
+	DebugLogging      bool
+}
+
+// Debug loggin function
+func debugLog(format string, v ...interface{}) {
+	if debugLogging {
+		log.Printf("[DEBUG] "+format, v...)
+	}
 }
 
 // categorizeFileType determines the media type based on file extension
@@ -184,7 +193,7 @@ func writeJSONFiles(files []FileInfo, outputDir string) error {
 }
 
 // generateHTML creates the index.html file in the output directory
-func generateHTML(outputDir string, allowDelete bool) error {
+func generateHTML(outputDir string, allowDelete bool, thumbnailsEnabled bool, debugLogging bool) error {
 	tmplContent, err := templateFS.ReadFile("template/index.html")
 	if err != nil {
 		return fmt.Errorf("failed to read embedded template: %w", err)
@@ -206,8 +215,10 @@ func generateHTML(outputDir string, allowDelete bool) error {
 
 	// Execute the template with data
 	data := TemplateData{
-		AllowDelete: allowDelete,
-		Version:     Version,
+		AllowDelete:       allowDelete,
+		Version:           Version,
+		ThumbnailsEnabled: thumbnailsEnabled,
+		DebugLogging:      debugLogging,
 	}
 
 	if err := tmpl.Execute(outFile, data); err != nil {
@@ -328,6 +339,10 @@ func main() {
 	showVersion := flag.Bool("v", false, "Print version information and exit")
 	hostAddr := flag.String("host", "localhost:8080", "Host address to serve on (default: localhost:8080)")
 	recursive := flag.Bool("recursive", true, "Scan directory recursively (default: true)")
+	enableThumbnails := flag.Bool("thumbnails", false, "Enable video thumbnail generation (requires FFmpeg)")
+	thumbnailCache := flag.String("thumb-cache", "thumbnails", "Directory to store video thumbnails")
+	preGenerate := flag.Int("thumb-pregenerate", 50, "Number of video thumbnails to pre-generate at startup")
+	debugLog := flag.Bool("log", false, "Enable debug logging (default: false)")
 
 	flag.Usage = func() {
 		fmt.Println("Usage: localpics -indir <input_directory> [-outdir <output_directory>] [-delete] [-host <host:port>]")
@@ -339,6 +354,13 @@ func main() {
 	if *showVersion {
 		fmt.Printf("LocalPics\nVersion: %s\nCommit: %s\nBuildDate: %s\n", Version, Commit, BuildDate)
 		os.Exit(0)
+	}
+
+	// Initialize thumbnail system BEFORE generating any HTML
+	thumbnailsEnabled := false
+	if *enableThumbnails {
+		InitThumbnails(true, *thumbnailCache, *preGenerate, *debugLog)
+		thumbnailsEnabled = true // Explicit local variable
 	}
 
 	if *inputDir == "" {
@@ -379,7 +401,7 @@ func main() {
 		log.Fatalf("failed to write JSON files: %v", err)
 	}
 
-	if err := generateHTML(*outputDir, *allowDelete); err != nil {
+	if err := generateHTML(*outputDir, *allowDelete, thumbnailsEnabled, *debugLog); err != nil {
 		log.Fatalf("failed to write HTML file: %v", err)
 	}
 
@@ -396,6 +418,14 @@ func main() {
 	if *allowDelete {
 		fmt.Println("⚠️ WARNING: File deletion API is enabled")
 		http.Handle("/delete/", FileDeleteHandler(*inputDir, true))
+	}
+
+	// Add thumbnail handler if enabled
+	if thumbnailsEnabled {
+		http.Handle("/thumbnail/", ThumbnailHandler(*inputDir))
+
+		// Start pre-generating thumbnails for videos
+		go PreGenerateThumbnails(files, *inputDir)
 	}
 
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir(filepath.Join(*outputDir, "static")))))
