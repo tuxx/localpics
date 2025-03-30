@@ -67,3 +67,19 @@ package:
 			esac \
 		fi \
 	done
+
+.PHONY: docker
+docker:
+	# Clean any previous builds
+	rm -rf $(BUILD_DIR)
+	mkdir -p $(BUILD_DIR)
+	
+	# Build for Linux AMD64 (standard container architecture)
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 $(GO) build -o $(BUILD_DIR)/$(BINARY_NAME) $(LDFLAGS) .
+	
+	# Build Docker image
+	docker build -t localpics:latest .
+	
+	# Show image info
+	@echo "Docker image built: localpics:latest"
+	@docker images localpics:latest

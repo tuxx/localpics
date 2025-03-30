@@ -10,6 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       build_success: ${{ steps.build_step.outputs.build_success }}
+      version: ${{ steps.meta.outputs.version }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -28,9 +29,11 @@ jobs:
         id: meta
         run: |
           # Remove the 'v' prefix from version for cleaner version string
-          echo "VERSION=${GITHUB_REF##*/v}" >> $GITHUB_ENV
+          VERSION=${GITHUB_REF##*/v}
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
           echo "COMMIT=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
           echo "DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_ENV
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
 
       - name: Build and Package
         id: build_step
@@ -56,11 +59,73 @@ jobs:
           name: localpics-artifacts
           path: build/release/
           retention-days: 1
+          
+      - name: Upload Linux AMD64 binary for Docker
+        if: steps.build_step.outputs.build_success == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: localpics-linux-amd64
+          path: build/localpics-linux-amd64
+          retention-days: 1
 
-  release:
+  docker:
     needs: build
     runs-on: ubuntu-latest
-    if: needs.build.outputs.build_success == 'true'
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        
+      - name: Download Linux AMD64 binary
+        uses: actions/download-artifact@v4
+        with:
+          name: localpics-linux-amd64
+          path: build/
+
+      - name: Make binary executable
+        run: chmod +x build/localpics-linux-amd64
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable=${{ github.ref == format('refs/tags/{0}', github.event.repository.default_branch) }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            VERSION=${{ needs.build.outputs.version }}
+
+      - name: Generate Docker image link
+        id: docker_link
+        run: |
+          DOCKER_LINK="[Docker Image](https://github.com/${{ github.repository }}/pkgs/container/$(echo ${{ github.repository }} | cut -d '/' -f 2))"
+          echo "DOCKER_LINK=${DOCKER_LINK}" >> $GITHUB_ENV
+
+  release:
+    needs: [build, docker]
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -76,6 +141,8 @@ jobs:
         run: |
           echo "release_notes<<EOF" >> $GITHUB_OUTPUT
           git log -1 --pretty=%B >> $GITHUB_OUTPUT
+          echo -e "\n\n## Docker Image\nA Docker image for this release is available at: ghcr.io/${{ github.repository }}:${{ needs.build.outputs.version }}" >> $GITHUB_OUTPUT
+          echo -e "\nOr pull latest with: \`docker pull ghcr.io/${{ github.repository }}:latest\`" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
