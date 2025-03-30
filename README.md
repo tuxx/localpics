@@ -152,6 +152,13 @@ Contributions are welcome! Please feel free to submit pull requests or open issu
 - 🔄 WebSocket support for real-time directory updates
 - 🎮 Slideshow mode for images
 
+### 🪟 Windows Compatibility
+- 🚦 Improved signal handling for graceful application shutdown on Windows
+- 🧹 Better temporary file cleanup mechanisms for Windows environments
+- 🔐 Cross-platform file permission handling that respects Windows ACLs
+- 🛣️ Robust path handling to prevent issues with Windows file separators
+- 🎞️ Platform-specific FFmpeg output capture for thumbnail generation
+
 ## 📜 License
 
 This project is licensed under the [GNU General Public License v2.0 (GPL-2.0)](https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html).
