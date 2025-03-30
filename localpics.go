@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -50,11 +51,103 @@ type TemplateData struct {
 	DebugLogging      bool
 }
 
+// Config holds the application configuration
+type Config struct {
+	InputDir       string `json:"input_dir"`
+	OutputDir      string `json:"output_dir"`
+	AllowDelete    bool   `json:"allow_delete"`
+	Host           string `json:"host"`
+	Recursive      bool   `json:"recursive"`
+	Thumbnails     bool   `json:"thumbnails"`
+	ThumbnailCache string `json:"thumbnail_cache"`
+	PreGenerate    int    `json:"thumbnail_pregenerate"`
+	DebugLog       bool   `json:"debug_log"`
+}
+
 // Debug loggin function
 func debugLog(format string, v ...interface{}) {
 	if debugLogging {
 		log.Printf("[DEBUG] "+format, v...)
 	}
+}
+
+// GetDefaultConfigPath returns the default location for the config file
+// based on the operating system
+func GetDefaultConfigPath() string {
+	configName := "localpics.json"
+
+	switch runtime.GOOS {
+	case "windows":
+		// Windows: %APPDATA%\localpics\config.json
+		appData := os.Getenv("APPDATA")
+		if appData == "" {
+			appData = filepath.Join(os.Getenv("USERPROFILE"), "AppData", "Roaming")
+		}
+		return filepath.Join(appData, "localpics", configName)
+	case "darwin":
+		// macOS: ~/Library/Application Support/localpics/config.json
+		home, _ := os.UserHomeDir()
+		return filepath.Join(home, "Library", "Application Support", "localpics", configName)
+	default:
+		// Linux/Unix: ~/.config/localpics/config.json
+		home, _ := os.UserHomeDir()
+		return filepath.Join(home, ".config", "localpics", configName)
+	}
+}
+
+func LoadConfig(configPath string) (*Config, error) {
+	// Set default values
+	config := &Config{
+		InputDir:       "",
+		OutputDir:      "",
+		AllowDelete:    false,
+		Host:           "localhost:8080",
+		Recursive:      true,
+		Thumbnails:     false,
+		ThumbnailCache: "thumbnails",
+		PreGenerate:    50,
+		DebugLog:       false,
+	}
+
+	// Check if file exists
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		return config, nil // Return default config if file doesn't exist
+	}
+
+	// Read configuration file
+	fileData, err := os.ReadFile(configPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read config file: %w", err)
+	}
+
+	// Parse JSON
+	if err := json.Unmarshal(fileData, config); err != nil {
+		return nil, fmt.Errorf("failed to parse config file: %w", err)
+	}
+
+	return config, nil
+}
+
+func SaveConfig(config *Config, configPath string) error {
+	// Create directory if it doesn't exist
+	dir := filepath.Dir(configPath)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("failed to create config directory: %w", err)
+	}
+
+	// Marshal to JSON with indentation for readability
+	data, err := json.MarshalIndent(config, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to encode config: %w", err)
+	}
+
+	// Write to file
+	if err := os.WriteFile(configPath, data, 0644); err != nil {
+		return fmt.Errorf("failed to write config file: %w", err)
+	}
+
+	fmt.Printf("Configuration saved to: %s\n", configPath)
+	return nil
 }
 
 // categorizeFileType determines the media type based on file extension
@@ -343,6 +436,8 @@ func main() {
 	thumbnailCache := flag.String("thumb-cache", "thumbnails", "Directory to store video thumbnails")
 	preGenerate := flag.Int("thumb-pregenerate", 50, "Number of video thumbnails to pre-generate at startup")
 	debugLog := flag.Bool("log", false, "Enable debug logging (default: false)")
+	createConfig := flag.Bool("create-config", false, "Create default config file and exit")
+	configPath := flag.String("config", GetDefaultConfigPath(), "Path to config file")
 
 	flag.Usage = func() {
 		fmt.Println("Usage: localpics -indir <input_directory> [-outdir <output_directory>] [-delete] [-host <host:port>]")
@@ -354,6 +449,84 @@ func main() {
 	if *showVersion {
 		fmt.Printf("LocalPics\nVersion: %s\nCommit: %s\nBuildDate: %s\n", Version, Commit, BuildDate)
 		os.Exit(0)
+	}
+
+	// Create default config and exit if requested
+	if *createConfig {
+		defaultConfig := &Config{
+			InputDir:       "",
+			OutputDir:      "",
+			AllowDelete:    false,
+			Host:           "localhost:8080",
+			Recursive:      true,
+			Thumbnails:     false,
+			ThumbnailCache: "thumbnails",
+			PreGenerate:    50,
+			DebugLog:       false,
+		}
+
+		if err := SaveConfig(defaultConfig, *configPath); err != nil {
+			fmt.Fprintf(os.Stderr, "Error creating config file: %v\n", err)
+			os.Exit(1)
+		}
+		os.Exit(0)
+	}
+
+	// Check if config file exists before trying to load it
+	configFileExists := false
+	if _, err := os.Stat(*configPath); err == nil {
+		configFileExists = true
+	}
+
+	// Try to use config file if it exists
+	if configFileExists {
+		config, err := LoadConfig(*configPath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error loading config file: %v\n", err)
+		} else {
+			fmt.Printf("Using configuration from: %s\n", *configPath)
+
+			// Create a map of flag pointers to config fields
+			flagMapping := map[string]interface{}{
+				"indir":             &config.InputDir,
+				"outdir":            &config.OutputDir,
+				"delete":            &config.AllowDelete,
+				"host":              &config.Host,
+				"recursive":         &config.Recursive,
+				"thumbnails":        &config.Thumbnails,
+				"thumb-cache":       &config.ThumbnailCache,
+				"thumb-pregenerate": &config.PreGenerate,
+				"log":               &config.DebugLog,
+			}
+
+			// Override config with command-line flags only if explicitly provided
+			flag.Visit(func(f *flag.Flag) {
+				if ptr, exists := flagMapping[f.Name]; exists {
+					// Set the config value from the flag
+					switch v := ptr.(type) {
+					case *string:
+						*v = f.Value.String()
+					case *bool:
+						boolVal, _ := strconv.ParseBool(f.Value.String())
+						*v = boolVal
+					case *int:
+						intVal, _ := strconv.Atoi(f.Value.String())
+						*v = intVal
+					}
+				}
+			})
+
+			// Update the original flag variables to use in the rest of the program
+			*inputDir = config.InputDir
+			*outputDir = config.OutputDir
+			*allowDelete = config.AllowDelete
+			*hostAddr = config.Host
+			*recursive = config.Recursive
+			*enableThumbnails = config.Thumbnails
+			*thumbnailCache = config.ThumbnailCache
+			*preGenerate = config.PreGenerate
+			*debugLog = config.DebugLog
+		}
 	}
 
 	// Initialize thumbnail system BEFORE generating any HTML
