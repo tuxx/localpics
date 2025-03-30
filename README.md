@@ -17,15 +17,15 @@ Just point it at a directory, and it instantly creates a beautiful, browser-base
 
 ## ✨ Features
 
-- 🚀 **Zero processing** - files are served directly from the source directory
+- 🚀 **Zero processing by default** - files are served directly from the source directory
 - 📱 **Responsive layout** with lazy loading for browsing large directories
 - 🖼️ **Media-specific viewers** for images, videos, audio, PDFs, and code files
 - 📊 **File categorization** by type (images, videos, audio, text, code, etc.)
 - 📷 **EXIF data extraction** for images with GPS location mapping
-- 🎞️ **Video thumbnails** with intelligent caching for faster browsing
 - 🔄 **Dynamic navigation** with keyboard shortcuts
 - 📝 **Code syntax highlighting** for various programming languages
-- 📦 **Single binary** with embedded template - no dependencies to install
+- 📦 **Single binary** with embedded template - no dependencies to install (unless you want video thumbnails)
+- 🎞️ **Video thumbnails** with intelligent caching for faster browsing (requires ffmpeg, and does a bit of server-side processing)
 
 ## 🚀 Installation
 
@@ -51,6 +51,7 @@ Visit the [Releases page](https://github.com/tuxx/localpics/releases) and downlo
 
 # Serve on a specific IP address and port
 ./localpics -indir /path/to/your/media -host 0.0.0.0:8080
+
 # Enable video thumbnail generation (requires FFmpeg)
 ./localpics -indir /path/to/your/media -thumbnails
 
