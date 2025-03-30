@@ -70,6 +70,78 @@ Visit the [Releases page](https://github.com/tuxx/localpics/releases) and downlo
 
 After starting, open the displayed URL in your browser to view your files.
 
+## 🐳 Docker Usage
+
+LocalPics is available as a Docker container, making it easy to deploy without installing any dependencies.
+
+### Pull from GitHub Container Registry
+```bash
+# Pull the latest version
+docker pull ghcr.io/tuxx/localpics:latest
+
+# Or a specific version
+docker pull ghcr.io/tuxx/localpics:1.2.3
+```
+
+### Quick Start
+```bash
+# Run with default settings (temporary output directory)
+docker run -p 8080:8080 -v /path/to/your/media:/data ghcr.io/tuxx/localpics:latest -indir /data -host 0.0.0.0:8080
+```
+
+### Using a Configuration File
+Create a config file on your host:
+```json
+{
+  "input_dir": "/data",
+  "host": "0.0.0.0:8080",
+  "recursive": true,
+  "thumbnails": false,
+  "thumbnail_cache": "/app/thumbnails",
+  "thumbnail_pregenerate": 50,
+  "debug_log": false
+}
+```
+
+Run with your configuration:
+```bash
+docker run -p 8080:8080 \
+  -v /path/to/your/media:/data \
+  -v /path/to/config.json:/app/.config/localpics/localpics.json \
+  -v /path/to/thumbnail/cache:/app/thumbnails \
+  ghcr.io/tuxx/localpics:latest
+```
+
+### Docker Compose Example
+```yaml
+version: '3'
+services:
+  localpics:
+    image: ghcr.io/tuxx/localpics:latest
+    ports:
+      - "8080:8080"
+    volumes:
+      - /path/to/your/media:/data
+      - /path/to/config.json:/app/.config/localpics/localpics.json
+      - /path/to/thumbnail/cache:/app/thumbnails
+    restart: unless-stopped
+```
+
+### Docker Volume Structure
+- `/data`: Mount your media directory here
+- `/app/.config/localpics/localpics.json`: Mount your configuration file here
+- `/app/thumbnails`: Persistent storage for video thumbnails
+
+### Building the Docker Image Locally
+If you want to test changes or build the container locally:
+```bash
+# Build from source
+make docker
+
+# Run your local build
+docker run -p 8080:8080 -v /path/to/your/media:/data localpics:latest -indir /data -host 0.0.0.0:8080
+```
+
 ## 📋 Command Line Options
 
 | Option | Description |
