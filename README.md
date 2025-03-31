@@ -5,9 +5,16 @@
 
 > A lightweight, no-nonsense media viewer for local directories
 
-<p align="center">
-    <img src="https://github.com/user-attachments/assets/8436178a-f51b-4c88-9d62-0ff6cff3b27c" alt="Slideshow of Webinterface">
-</p>
+## Demo
+
+Click on the image for a demonstration video that opens in a new tab.
+
+<div align="center">
+  <a href="https://github.com/user-attachments/assets/b6043bec-3ae5-4282-a237-a5cd53543739" target="_blank" title="Click for video demo">
+    <img src="https://github.com/user-attachments/assets/2af31ae1-a7ff-4263-9095-859c814863f0" alt="Video thumbnail" />
+  </a>
+</div>
+
 
 ## 🔍 Overview
 
