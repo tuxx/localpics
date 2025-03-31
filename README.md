@@ -257,11 +257,7 @@ Contributions are welcome! Please feel free to submit pull requests or open issu
 
 ## 📜 License
 
-This project is licensed under the [GNU General Public License v2.0 (GPL-2.0)](https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html).
-
-This is a copyleft license that requires anyone who distributes your code or derivative works to make the source available under the same terms. See the [LICENSE](LICENSE) file in the repository for the full text.
-
-GPL-2.0 ensures that all modifications to the code remain free and open source.
+[MIT](./LICENSE)
 
 ## 🙏 Acknowledgments
 
