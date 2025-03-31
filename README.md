@@ -7,7 +7,7 @@
 
 ## Demo
 
-Click on the image for a demonstration video that opens in a new tab.
+Click on the image for a demonstration video.
 
 <div align="center">
   <a href="https://github.com/user-attachments/assets/b6043bec-3ae5-4282-a237-a5cd53543739" target="_blank" title="Click for video demo">
