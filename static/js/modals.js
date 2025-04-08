@@ -4,19 +4,23 @@
 
 /**
  * Show image modal
- * @param {number} i - Index of the image in data array
+ * @param {number} i - Index of the image in data Map
  */
 function showImageModal(i) {
   modalIndex = i;
-  const file = data[i];
+  const file = data.get(i);
+  if (!file) {
+    console.error(`File not found in map for index: ${i}`);
+    return; // Don't show modal if file data isn't loaded
+  }
   const modal = document.getElementById("imageModal");
   const modalImg = document.getElementById("modalImg");
   const prevButton = document.getElementById("prevButton");
   const nextButton = document.getElementById("nextButton");
 
   // Update navigation buttons
-  prevButton.classList.toggle("disabled", i <= 0);
-  nextButton.classList.toggle("disabled", i >= data.length - 1);
+  prevButton.classList.toggle("disabled", !findAdjacentImageIndex(i, -1));
+  nextButton.classList.toggle("disabled", !findAdjacentImageIndex(i, 1));
 
   // Set image and download link
   modalImg.src = file.path;
@@ -38,24 +42,11 @@ function showImageModal(i) {
 function navigateModal(dir) {
   if (modalIndex < 0) return;
 
-  const newIndex = modalIndex + dir;
+  const newIndex = findAdjacentImageIndex(modalIndex, dir);
 
-  // Check bounds
-  if (newIndex < 0 || newIndex >= data.length) {
-    return; // Do nothing if out of bounds
-  }
-
-  // Only navigate to images
-  if (data[newIndex].type === "image") {
+  // If a valid adjacent image index was found
+  if (newIndex !== null) {
     showImageModal(newIndex);
-  } else {
-    // Look for next image in the direction we're going
-    for (let i = newIndex; dir > 0 ? i < data.length : i >= 0; i += dir) {
-      if (data[i].type === "image") {
-        showImageModal(i);
-        break;
-      }
-    }
   }
 }
 
@@ -86,8 +77,10 @@ function toggleExif(forceUpdate = false) {
   const info = [
     `<strong>Resolution:</strong> ${img.naturalWidth} × ${img.naturalHeight}`,
   ];
-  info.push(`<strong>File:</strong> ${data[modalIndex].name}`);
-  info.push(`<strong>Size:</strong> ${formatFileSize(data[modalIndex].size)}`);
+  const currentFile = data.get(modalIndex);
+  if (!currentFile) return; // Should not happen if modal is shown
+  info.push(`<strong>File:</strong> ${currentFile.name}`);
+  info.push(`<strong>Size:</strong> ${formatFileSize(currentFile.size)}`);
 
   // Try to get EXIF data
   try {
@@ -365,4 +358,33 @@ function hideModal(modalId, event) {
     }
     // Add similar logic for audio if needed
   }
+}
+
+/**
+ * Helper function to find the index of the next/previous image in the data map.
+ * @param {number} currentIndex - The starting index.
+ * @param {number} direction - The direction to search (-1 for prev, 1 for next).
+ * @returns {number|null} The index of the adjacent image, or null if not found.
+ */
+function findAdjacentImageIndex(currentIndex, direction) {
+  let adjacentIndex = currentIndex + direction;
+
+  // Search within the bounds of the currently loaded data keys
+  while (data.has(adjacentIndex)) {
+    const file = data.get(adjacentIndex);
+    if (file && file.type === "image") {
+      return adjacentIndex; // Found the next/previous image
+    }
+    adjacentIndex += direction; // Keep searching in the same direction
+  }
+
+  // Handle searching backwards from the start (index 0)
+  if (direction < 0 && adjacentIndex < 0) {
+    return null; // Reached beginning
+  }
+
+  // We could potentially add logic here to load the next/prev page if adjacentIndex goes beyond current data.size
+  // For now, just return null if not found within loaded data.
+
+  return null; // No image found in this direction within the loaded data
 }
