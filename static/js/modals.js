@@ -4,19 +4,23 @@
 
 /**
  * Show image modal
- * @param {number} i - Index of the image in data array
+ * @param {number} i - Index of the image in data Map
  */
 function showImageModal(i) {
   modalIndex = i;
-  const file = data[i];
+  const file = data.get(i);
+  if (!file) {
+    console.error(`File not found in map for index: ${i}`);
+    return; // Don't show modal if file data isn't loaded
+  }
   const modal = document.getElementById("imageModal");
   const modalImg = document.getElementById("modalImg");
   const prevButton = document.getElementById("prevButton");
   const nextButton = document.getElementById("nextButton");
 
   // Update navigation buttons
-  prevButton.classList.toggle("disabled", i <= 0);
-  nextButton.classList.toggle("disabled", i >= data.length - 1);
+  prevButton.classList.toggle("disabled", !findAdjacentImageIndex(i, -1));
+  nextButton.classList.toggle("disabled", !findAdjacentImageIndex(i, 1));
 
   // Set image and download link
   modalImg.src = file.path;
@@ -38,24 +42,11 @@ function showImageModal(i) {
 function navigateModal(dir) {
   if (modalIndex < 0) return;
 
-  const newIndex = modalIndex + dir;
+  const newIndex = findAdjacentImageIndex(modalIndex, dir);
 
-  // Check bounds
-  if (newIndex < 0 || newIndex >= data.length) {
-    return; // Do nothing if out of bounds
-  }
-
-  // Only navigate to images
-  if (data[newIndex].type === "image") {
+  // If a valid adjacent image index was found
+  if (newIndex !== null) {
     showImageModal(newIndex);
-  } else {
-    // Look for next image in the direction we're going
-    for (let i = newIndex; dir > 0 ? i < data.length : i >= 0; i += dir) {
-      if (data[i].type === "image") {
-        showImageModal(i);
-        break;
-      }
-    }
   }
 }
 
@@ -86,8 +77,10 @@ function toggleExif(forceUpdate = false) {
   const info = [
     `<strong>Resolution:</strong> ${img.naturalWidth} × ${img.naturalHeight}`,
   ];
-  info.push(`<strong>File:</strong> ${data[modalIndex].name}`);
-  info.push(`<strong>Size:</strong> ${formatFileSize(data[modalIndex].size)}`);
+  const currentFile = data.get(modalIndex);
+  if (!currentFile) return; // Should not happen if modal is shown
+  info.push(`<strong>File:</strong> ${currentFile.name}`);
+  info.push(`<strong>Size:</strong> ${formatFileSize(currentFile.size)}`);
 
   // Try to get EXIF data
   try {
@@ -284,28 +277,114 @@ async function showFileModal(file) {
 }
 
 /**
- * Hide modal
+ * Show video modal for on-demand playback
+ * @param {Object} file - File data
+ * @param {number} videoIndex - Index of the video in data array (relative to currently loaded data)
+ */
+function showVideoModal(file, videoIndex) {
+  const modal = document.getElementById("videoModal");
+  const videoPlayer = document.getElementById("modalVideo");
+
+  // --- Reset Player State ---
+  videoPlayer.pause(); // Pause any currently playing video
+  videoPlayer.removeAttribute("src"); // Remove the old source
+  videoPlayer.load(); // Reset the media element
+  videoPlayer.currentTime = 0; // Reset time
+  // Clear previous event listeners to avoid duplicates
+  const newPlayer = videoPlayer.cloneNode(true);
+  videoPlayer.parentNode.replaceChild(newPlayer, videoPlayer);
+  const cleanVideoPlayer = document.getElementById("modalVideo"); // Re-select the new node
+  // --- End Reset ---
+
+  // Set new source
+  cleanVideoPlayer.src = file.path;
+  document.getElementById("videoDownloadBtn").href = file.path;
+  document.getElementById("videoDownloadBtn").download = file.name;
+
+  // Show file details
+  document.getElementById("videoModalTitle").textContent = file.name;
+  document.getElementById("videoModalSize").textContent = formatFileSize(
+    file.size,
+  );
+
+  // Add event listener to play when ready
+  const playPromiseHandler = () => {
+    cleanVideoPlayer.play().catch((e) => {
+      // Autoplay might be blocked by the browser, which is fine.
+      // User can click play manually.
+      window.debugLog("Autoplay prevented or failed:", e);
+    });
+    // Remove listener after first trigger
+    cleanVideoPlayer.removeEventListener("canplaythrough", playPromiseHandler);
+  };
+  cleanVideoPlayer.addEventListener("canplaythrough", playPromiseHandler);
+
+  // Handle potential errors loading the video source
+  const errorHandler = (e) => {
+    console.error("Error loading video:", e);
+    document.getElementById("videoModalTitle").textContent =
+      `Error loading: ${file.name}`;
+    // Optionally display an error message in the modal body
+    cleanVideoPlayer.removeEventListener("error", errorHandler);
+  };
+  cleanVideoPlayer.addEventListener("error", errorHandler);
+
+  modal.style.display = "flex";
+
+  // Explicitly load the new source
+  cleanVideoPlayer.load();
+
+  // We don't call play() immediately anymore.
+  // It will be called by the 'canplay' event listener.
+}
+
+/**
+ * Hide a modal and stop media playback if applicable
  * @param {string} modalId - ID of the modal to hide
- * @param {Event} event - Click event
+ * @param {Event} event - The click event
  */
 function hideModal(modalId, event) {
-  if (event.target.id === modalId || event.target.classList.contains("modal")) {
-    document.getElementById(modalId).style.display = "none";
-  }
-  // Stop video playback if video modal is closed
-  if (modalId === "videoModal") {
-    stopVideoPlayback();
+  // Only hide if the click is on the modal background itself
+  if (event.target.id === modalId) {
+    const modal = document.getElementById(modalId);
+    modal.style.display = "none";
+
+    // Stop video/audio playback when modal closes
+    if (modalId === "videoModal") {
+      const videoPlayer = document.getElementById("modalVideo");
+      videoPlayer.pause();
+      videoPlayer.removeAttribute("src"); // Prevent further loading
+      videoPlayer.load(); // Reset element
+    }
+    // Add similar logic for audio if needed
   }
 }
 
 /**
- * Stop video playback and clear the video source when modal is closed
- * Prevents memory leaks by ensuring the video element doesn't retain references to large video files
+ * Helper function to find the index of the next/previous image in the data map.
+ * @param {number} currentIndex - The starting index.
+ * @param {number} direction - The direction to search (-1 for prev, 1 for next).
+ * @returns {number|null} The index of the adjacent image, or null if not found.
  */
-function stopVideoPlayback() {
-  const videoPlayer = document.getElementById("modalVideo");
-  if (videoPlayer) {
-    videoPlayer.pause();
-    videoPlayer.src = ""; // Clear source to free memory
+function findAdjacentImageIndex(currentIndex, direction) {
+  let adjacentIndex = currentIndex + direction;
+
+  // Search within the bounds of the currently loaded data keys
+  while (data.has(adjacentIndex)) {
+    const file = data.get(adjacentIndex);
+    if (file && file.type === "image") {
+      return adjacentIndex; // Found the next/previous image
+    }
+    adjacentIndex += direction; // Keep searching in the same direction
   }
+
+  // Handle searching backwards from the start (index 0)
+  if (direction < 0 && adjacentIndex < 0) {
+    return null; // Reached beginning
+  }
+
+  // We could potentially add logic here to load the next/prev page if adjacentIndex goes beyond current data.size
+  // For now, just return null if not found within loaded data.
+
+  return null; // No image found in this direction within the loaded data
 }

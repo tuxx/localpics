@@ -54,11 +54,46 @@ function updateActiveNav(category) {
   });
 }
 
+let allFileStats = {}; // Store { type: { totalFiles, filesPerPage, totalPages }, ... }
+
 /**
- * Fetch statistics for all file types
+ * Fetch statistics for all file types from meta.json
  * @returns {Promise<Object>} Statistics for each file type
  */
 async function fetchAllStats() {
+  const statsContainer = document.getElementById("fileStats");
+  statsContainer.innerHTML =
+    '<div class="loading-container"><div class="spinner"></div><p>Loading file statistics...</p></div>';
+
+  try {
+    const response = await fetch("meta.json");
+    if (!response.ok) {
+      // Handle case where meta.json might not exist (e.g., very few files, pagination not triggered)
+      if (response.status === 404) {
+        console.warn(
+          "meta.json not found. Assuming non-paginated structure or empty directory.",
+        );
+        // Try fetching individual .json files as a fallback (or handle as needed)
+        allFileStats = await fetchLegacyStats(); // Call a fallback function
+      } else {
+        throw new Error(`HTTP error ${response.status}`);
+      }
+    } else {
+      allFileStats = await response.json();
+    }
+
+    displayFileStats(); // Update the stats display
+    return allFileStats;
+  } catch (error) {
+    console.error("Failed to load file statistics:", error);
+    statsContainer.innerHTML = `<div class="error-container">Failed to load file statistics: ${error.message}</div>`;
+    allFileStats = {}; // Reset stats on error
+    return {};
+  }
+}
+
+// Fallback function for non-paginated structure
+async function fetchLegacyStats() {
   const types = [
     "image",
     "video",
@@ -69,43 +104,34 @@ async function fetchAllStats() {
     "archive",
     "other",
   ];
-  const statsContainer = document.getElementById("fileStats");
-  statsContainer.innerHTML =
-    '<div class="loading-container"><div class="spinner"></div><p>Loading file statistics...</p></div>';
-
-  try {
-    const results = await Promise.allSettled(
-      types.map(async (t) => {
-        try {
-          const response = await fetch(t + ".json");
-          if (!response.ok) {
-            // Just return zero count rather than throwing an error
-            return { type: t, count: 0 };
-          }
-          const json = await response.json();
-          return { type: t, count: json.length };
-        } catch (error) {
-          console.warn(`Could not fetch stats for ${t}:`, error);
-          return { type: t, count: 0, error: true };
-        }
-      }),
-    );
-
-    // Rest of the function remains the same
-    allFileStats = results.reduce((acc, result) => {
-      if (result.status === "fulfilled") {
-        acc[result.value.type] = result.value;
+  const tempStats = {};
+  const results = await Promise.allSettled(
+    types.map(async (t) => {
+      try {
+        const response = await fetch(t + ".json");
+        if (!response.ok) return { type: t, count: 0 };
+        const json = await response.json();
+        return { type: t, count: json.length };
+      } catch (error) {
+        return { type: t, count: 0, error: true };
       }
-      return acc;
-    }, {});
+    }),
+  );
 
-    displayFileStats();
-    return allFileStats;
-  } catch (error) {
-    statsContainer.innerHTML = `<div class="error-container">Failed to load file statistics: ${error.message}</div>`;
-    return {};
-  }
+  results.forEach((result) => {
+    if (result.status === "fulfilled" && result.value) {
+      // Convert to the new stats format
+      tempStats[result.value.type] = {
+        totalFiles: result.value.count,
+        filesPerPage: result.value.count, // Assume one page
+        totalPages: result.value.count > 0 ? 1 : 0,
+        isLegacy: true, // Flag to indicate fallback structure
+      };
+    }
+  });
+  return tempStats;
 }
+
 /**
  * Display file statistics in a table
  */
@@ -117,8 +143,9 @@ function displayFileStats() {
     return;
   }
 
+  // Calculate total based on the new structure
   const totalCount = Object.values(allFileStats).reduce(
-    (sum, stat) => sum + (stat.count || 0),
+    (sum, stat) => sum + (stat.totalFiles || 0),
     0,
   );
 
@@ -137,13 +164,14 @@ function displayFileStats() {
 
   types.forEach((type) => {
     const stat = allFileStats[type];
-    if (!stat.error) {
+    if (stat && stat.totalFiles > 0) {
+      // Check if stat exists and has files
       const percentage =
-        totalCount > 0 ? ((stat.count / totalCount) * 100).toFixed(1) : 0;
+        totalCount > 0 ? ((stat.totalFiles / totalCount) * 100).toFixed(1) : 0;
       html += `
         <tr>
           <td>${type.charAt(0).toUpperCase() + type.slice(1)}</td>
-          <td>${stat.count}</td>
+          <td>${stat.totalFiles}</td>
           <td>${percentage}%</td>
         </tr>
       `;
