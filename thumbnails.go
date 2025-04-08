@@ -16,7 +16,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/u2takey/ffmpeg-go"
+	ffmpeg_go "github.com/u2takey/ffmpeg-go"
 )
 
 // ThumbConfig holds thumbnail generation settings
@@ -159,7 +159,12 @@ func startCacheSaver() {
 		defer ticker.Stop()
 
 		for range ticker.C {
-			saveThumbnailCache()
+			ThumbnailCacheMutex.RLock() // Ensure we only save if needed
+			changed := thumbnailChanged
+			ThumbnailCacheMutex.RUnlock()
+			if changed {
+				saveThumbnailCache()
+			}
 		}
 	}()
 }
@@ -339,55 +344,92 @@ func ThumbnailHandler(inputDir string) http.HandlerFunc {
 	}
 }
 
-// PreGenerateThumbnails generates thumbnails for the first n videos
-func PreGenerateThumbnails(videos []FileInfo, inputDir string) {
+// PreGenerateThumbnails generates thumbnails for videos on the first page (video_1.json)
+func PreGenerateThumbnails(inputDir string, outputDir string) {
 	if !ThumbnailEnabled || ThumbnailConfig.PreGenerate <= 0 {
 		return
 	}
 
-	debugLog("Pre-generating thumbnails for %d videos...", ThumbnailConfig.PreGenerate)
+	debugLog("Attempting to pre-generate up to %d thumbnails...", ThumbnailConfig.PreGenerate)
 
-	// Process only video files up to the configured limit
-	count := 0
-	processed := 0
+	// Construct path to the first page of video data
+	firstPagePath := filepath.Join(outputDir, "video_1.json")
 
-	// Start cache saver
-	startCacheSaver()
+	// Read the first page JSON
+	jsonData, err := os.ReadFile(firstPagePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			debugLog("video_1.json not found, no video thumbnails to pre-generate.")
+			return
+		}
+		log.Printf("Error reading video_1.json for pre-generation: %v", err)
+		return
+	}
 
-	for _, file := range videos {
-		if file.Type != "video" {
+	var firstPageVideos []FileInfo
+	if err := json.Unmarshal(jsonData, &firstPageVideos); err != nil {
+		log.Printf("Error unmarshalling video_1.json for pre-generation: %v", err)
+		return
+	}
+
+	if len(firstPageVideos) == 0 {
+		debugLog("No videos found on the first page (video_1.json). Skipping pre-generation.")
+		return
+	}
+
+	numToProcess := ThumbnailConfig.PreGenerate
+	if len(firstPageVideos) < numToProcess {
+		numToProcess = len(firstPageVideos)
+	}
+
+	debugLog("Found %d videos on first page. Pre-generating thumbnails for the first %d...",
+		len(firstPageVideos), numToProcess)
+
+	processed := 0        // Count attempts
+	var wg sync.WaitGroup // Use WaitGroup to wait for all goroutines
+
+	for _, file := range firstPageVideos {
+		if file.Type != "video" { // Should always be video, but double-check
 			continue
 		}
 
-		// Respect the pre-generate limit
-		if processed >= ThumbnailConfig.PreGenerate {
+		if processed >= numToProcess { // Use numToProcess limit
 			break
 		}
 		processed++
 
 		// Get full path to the video
-		// The file.Path will be like "/media/subdir/video.mp4", need to remove "/media/" prefix
+		// file.Path is like "/media/subdir/video.mp4"
 		videoPath := filepath.Join(inputDir, file.Path[len("/media/"):])
 
-		// Generate thumbnail in a separate goroutine to allow concurrent processing
+		wg.Add(1)
 		go func(vPath string) {
+			defer wg.Done()
 			_, err := GetOrCreateThumbnail(vPath)
 			if err != nil {
-				log.Printf("Failed to pre-generate thumbnail for %s: %v", filepath.Base(vPath), err)
-			} else {
-				count++
-				if count%10 == 0 { // Save cache every 10 successful generations
-					saveThumbnailCache()
+				// Only log errors during pre-gen if debug logging is enabled to reduce noise
+				if debugLogging {
+					log.Printf("[DEBUG] Failed pre-generating thumbnail for %s: %v", filepath.Base(vPath), err)
 				}
+			} else {
+				// Successfully generated or retrieved from cache
+				// Use atomic increment if this becomes a high-contention point, but likely fine.
+				// We don't need a separate counter, WaitGroup handles completion.
 			}
 		}(videoPath)
 	}
 
-	// Save cache one final time after all files are processed
-	time.AfterFunc(10*time.Second, func() {
-		debugLog("Completed initial thumbnail pre-generation: %d processed", count)
+	// Wait for all initiated thumbnail generations to complete
+	wg.Wait()
+
+	// Save cache one final time after pre-generation attempt completes
+	debugLog("Thumbnail pre-generation attempt finished for first page videos.")
+	ThumbnailCacheMutex.RLock() // Check if any changes occurred during pre-gen
+	changed := thumbnailChanged
+	ThumbnailCacheMutex.RUnlock()
+	if changed {
 		saveThumbnailCache()
-	})
+	}
 }
 
 // InitThumbnails initializes the thumbnail system
@@ -414,21 +456,25 @@ func InitThumbnails(enableThumbnails bool, cacheDir string, preGenerate int, deb
 	// Create cache directory if it doesn't exist
 	if err := os.MkdirAll(ThumbnailConfig.CacheDir, 0755); err != nil {
 		log.Printf("Warning: Failed to create thumbnail cache directory: %v", err)
-		ThumbnailEnabled = false
+		ThumbnailEnabled = false // Disable if cache dir fails
 		return
 	}
 
 	// Try to load existing cache
 	loadThumbnailCache()
 
-	// This log should always be visible, so we'll use fmt.Printf instead
-	if debugLogging {
-		log.Printf("Video thumbnail generation enabled (cache: %s, pre-generate: %d)",
-			ThumbnailConfig.CacheDir, ThumbnailConfig.PreGenerate)
-	} else {
-		// When not in debug mode, restore standard output for any future important logs
-		log.SetOutput(os.Stdout)
-		log.Printf("Video thumbnail generation enabled (cache: %s)",
-			ThumbnailConfig.CacheDir)
+	// Start the periodic cache saver
+	startCacheSaver()
+
+	logMsg := fmt.Sprintf("Video thumbnail generation enabled (cache: %s", ThumbnailConfig.CacheDir)
+	if ThumbnailConfig.PreGenerate > 0 {
+		logMsg += fmt.Sprintf(", pre-generate: %d", ThumbnailConfig.PreGenerate)
+	}
+	logMsg += ")"
+	log.Println(logMsg)
+
+	// Set log output based on debug flag AFTER initial setup logs
+	if !debugLogging {
+		log.SetOutput(io.Discard) // Suppress ffmpeg-go info logs if not debugging
 	}
 }

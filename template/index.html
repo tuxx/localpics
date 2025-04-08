@@ -18,15 +18,31 @@
     data-debug-enabled="{{.DebugLogging}}"
   >
     <div class="nav" id="navbar">
-      <a onclick="showIntro()" class="active" data-category="home">🏠 Home</a>
-      <a onclick="load('image')" data-category="image">Images</a>
-      <a onclick="load('video')" data-category="video">Videos</a>
-      <a onclick="load('audio')" data-category="audio">Audio</a>
-      <a onclick="load('text')" data-category="text">Text Docs</a>
-      <a onclick="load('code')" data-category="code">Code Files</a>
-      <a onclick="load('pdf')" data-category="pdf">PDFs</a>
-      <a onclick="load('archive')" data-category="archive">Archives</a>
-      <a onclick="load('other')" data-category="other">Other</a>
+      <a href="#" data-category="home" onclick="showIntro()" class="active"
+        >🏠 Home</a
+      >
+      <a href="#" data-category="image" onclick="loadCategory('image')"
+        >Images</a
+      >
+      <a href="#" data-category="video" onclick="loadCategory('video')"
+        >Videos</a
+      >
+      <a href="#" data-category="audio" onclick="loadCategory('audio')"
+        >Audio</a
+      >
+      <a href="#" data-category="text" onclick="loadCategory('text')"
+        >Text Docs</a
+      >
+      <a href="#" data-category="code" onclick="loadCategory('code')"
+        >Code Files</a
+      >
+      <a href="#" data-category="pdf" onclick="loadCategory('pdf')">PDFs</a>
+      <a href="#" data-category="archive" onclick="loadCategory('archive')"
+        >Archives</a
+      >
+      <a href="#" data-category="other" onclick="loadCategory('other')"
+        >Other</a
+      >
       <span class="spacer"></span>
       <a onclick="zoomIn()" title="Zoom In" class="zoom-control">🔍+</a>
       <a onclick="zoomOut()" title="Zoom Out" class="zoom-control">🔍-</a>

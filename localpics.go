@@ -172,114 +172,164 @@ func categorizeFileType(ext string) string {
 	}
 }
 
-// scanDirectory scans a directory for files
-func scanDirectory(root string, baseURL string, recursive bool) ([]FileInfo, error) {
-	var files []FileInfo
+const filesPerPage = 1000
+
+// CategoryPageInfo tracks pagination for a category
+type CategoryPageInfo struct {
+	TotalFiles   int `json:"totalFiles"`
+	FilesPerPage int `json:"filesPerPage"`
+	TotalPages   int `json:"totalPages"`
+}
+
+// scanDirectory scans a directory and writes paginated JSON files
+func scanDirectory(root string, baseURL string, recursive bool, outputDir string) (map[string]CategoryPageInfo, error) {
+	// Use maps to store files per category and track page numbers
+	categoryFiles := make(map[string][]FileInfo)
+	categoryPageNum := make(map[string]int)
+	categoryTotalCount := make(map[string]int)
+
+	// Initialize page numbers to 1
+	for _, category := range []string{"image", "video", "audio", "text", "code", "pdf", "archive", "other"} {
+		categoryPageNum[category] = 1
+	}
+
+	walkFn := func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if info.IsDir() {
+			// For non-recursive, only process root
+			if !recursive && path != root {
+				return filepath.SkipDir // Skip subdirectories
+			}
+			return nil // Continue walking
+		}
+
+		// Get the relative path from the root directory
+		relPath, err := filepath.Rel(root, path)
+		if err != nil {
+			return err // Return error to stop walking
+		}
+
+		name := info.Name()
+		if name == "index.html" || strings.HasSuffix(name, ".json") || name == "meta.json" {
+			return nil // Skip generated files
+		}
+
+		ext := strings.TrimPrefix(filepath.Ext(name), ".")
+		fileType := categorizeFileType(ext)
+
+		webPath := filepath.Join(baseURL, relPath)
+		webPath = strings.ReplaceAll(webPath, "\\", "/")
+
+		fileInfo := FileInfo{
+			Name:      name,
+			Path:      webPath,
+			Size:      info.Size(),
+			Modified:  info.ModTime(),
+			Extension: ext,
+			Type:      fileType,
+		}
+
+		categoryFiles[fileType] = append(categoryFiles[fileType], fileInfo)
+		categoryTotalCount[fileType]++
+
+		// If a category reaches the page size, write it to a JSON file
+		if len(categoryFiles[fileType]) >= filesPerPage {
+			if err := writePaginatedJSON(categoryFiles[fileType], fileType, categoryPageNum[fileType], outputDir); err != nil {
+				log.Printf("Error writing paginated JSON for %s page %d: %v", fileType, categoryPageNum[fileType], err)
+				// Don't stop the whole scan for one file error, maybe log and continue?
+				// return err // Uncomment to stop on error
+			}
+			categoryFiles[fileType] = nil // Clear the slice
+			categoryPageNum[fileType]++
+		}
+
+		return nil
+	}
 
 	if recursive {
-		// Use Walk for recursive scanning
-		err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
-			if err != nil {
-				return err
-			}
-
-			// Skip directories themselves
-			if info.IsDir() {
-				return nil
-			}
-
-			// Get the relative path from the root directory
-			relPath, err := filepath.Rel(root, path)
-			if err != nil {
-				return err
-			}
-
-			name := info.Name()
-			if name == "index.html" || strings.HasSuffix(name, ".json") {
-				return nil
-			}
-
-			ext := strings.TrimPrefix(filepath.Ext(name), ".")
-			fileType := categorizeFileType(ext)
-
-			// Always use forward slashes for web URLs, regardless of platform
-			webPath := filepath.Join(baseURL, relPath)
-			webPath = strings.ReplaceAll(webPath, "\\", "/")
-
-			files = append(files, FileInfo{
-				Name:      name,
-				Path:      webPath,
-				Size:      info.Size(),
-				Modified:  info.ModTime(),
-				Extension: ext,
-				Type:      fileType,
-			})
-
-			return nil
-		})
-
-		if err != nil {
-			return nil, err
+		if err := filepath.Walk(root, walkFn); err != nil {
+			return nil, fmt.Errorf("error walking directory: %w", err)
 		}
 	} else {
-		// Original non-recursive logic
+		// Manually walk only the top-level directory for non-recursive
 		entries, err := os.ReadDir(root)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("error reading directory: %w", err)
 		}
-
 		for _, entry := range entries {
-			if entry.IsDir() {
-				continue
-			}
-			name := entry.Name()
-			if name == "index.html" || strings.HasSuffix(name, ".json") {
-				continue
-			}
 			info, err := entry.Info()
 			if err != nil {
-				continue
+				log.Printf("Error getting info for %s: %v", entry.Name(), err)
+				continue // Skip this entry
 			}
-			ext := strings.TrimPrefix(filepath.Ext(name), ".")
-			fileType := categorizeFileType(ext)
-
-			// Always use forward slashes for web URLs, regardless of platform
-			webPath := filepath.Join(baseURL, name)
-			webPath = strings.ReplaceAll(webPath, "\\", "/")
-
-			files = append(files, FileInfo{
-				Name:      name,
-				Path:      webPath,
-				Size:      info.Size(),
-				Modified:  info.ModTime(),
-				Extension: ext,
-				Type:      fileType,
-			})
+			if err := walkFn(filepath.Join(root, entry.Name()), info, nil); err != nil {
+				// Handle potential errors from walkFn if needed
+				log.Printf("Error processing entry %s: %v", entry.Name(), err)
+			}
 		}
 	}
 
+	// Write any remaining files
+	for fileType, files := range categoryFiles {
+		if len(files) > 0 {
+			if err := writePaginatedJSON(files, fileType, categoryPageNum[fileType], outputDir); err != nil {
+				log.Printf("Error writing final paginated JSON for %s page %d: %v", fileType, categoryPageNum[fileType], err)
+			}
+		}
+	}
+
+	// Prepare metadata
+	metaData := make(map[string]CategoryPageInfo)
+	for category, totalCount := range categoryTotalCount {
+		if totalCount > 0 {
+			totalPages := (totalCount + filesPerPage - 1) / filesPerPage // Ceiling division
+			metaData[category] = CategoryPageInfo{
+				TotalFiles:   totalCount,
+				FilesPerPage: filesPerPage,
+				TotalPages:   totalPages,
+			}
+		}
+	}
+
+	// Write metadata file
+	if err := writeMetaJSON(metaData, outputDir); err != nil {
+		return nil, fmt.Errorf("error writing meta.json: %w", err)
+	}
+
+	return metaData, nil
+}
+
+// writePaginatedJSON writes a single page of files to a JSON file
+func writePaginatedJSON(files []FileInfo, category string, pageNum int, outputDir string) error {
+	// Sort files within the page before writing (optional, but good for consistency)
 	sort.Slice(files, func(i, j int) bool {
 		return files[i].Name < files[j].Name
 	})
 
-	return files, nil
+	jsonPath := filepath.Join(outputDir, fmt.Sprintf("%s_%d.json", category, pageNum))
+	data, err := json.MarshalIndent(files, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal json for %s page %d: %w", category, pageNum, err)
+	}
+	err = os.WriteFile(jsonPath, data, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to write json file %s: %w", jsonPath, err)
+	}
+	return nil
 }
 
-func writeJSONFiles(files []FileInfo, outputDir string) error {
-	typeMap := map[string][]FileInfo{}
-	for _, f := range files {
-		typeMap[f.Type] = append(typeMap[f.Type], f)
+// writeMetaJSON writes the metadata file
+func writeMetaJSON(metaData map[string]CategoryPageInfo, outputDir string) error {
+	metaPath := filepath.Join(outputDir, "meta.json")
+	data, err := json.MarshalIndent(metaData, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal meta json: %w", err)
 	}
-	for typ, items := range typeMap {
-		jsonPath := filepath.Join(outputDir, typ+".json")
-		data, err := json.MarshalIndent(items, "", "  ")
-		if err != nil {
-			return err
-		}
-		err = os.WriteFile(jsonPath, data, 0644)
-		if err != nil {
-			return err
-		}
+	if err := os.WriteFile(metaPath, data, 0644); err != nil {
+		return fmt.Errorf("failed to write meta json file %s: %w", metaPath, err)
 	}
 	return nil
 }
@@ -528,14 +578,13 @@ func main() {
 		log.Fatalf("failed to create output directory: %v", err)
 	}
 
-	files, err := scanDirectory(config.InputDir, "/media", config.Recursive)
+	// Scan directory and generate paginated JSON + meta.json
+	_, err = scanDirectory(config.InputDir, "/media", config.Recursive, config.OutputDir)
 	if err != nil {
-		log.Fatalf("failed to scan directory: %v", err)
+		log.Fatalf("failed to scan directory and write JSON files: %v", err)
 	}
-
-	if err := writeJSONFiles(files, config.OutputDir); err != nil {
-		log.Fatalf("failed to write JSON files: %v", err)
-	}
+	// The metadata is written to meta.json, no need to log it here unless debugging
+	// debugLog("Scan complete. Metadata: %+v", metaData) // Correct call if needed
 
 	if err := generateHTML(config.OutputDir, config.AllowDelete, config.Thumbnails, config.DebugLog); err != nil {
 		log.Fatalf("failed to write HTML file: %v", err)
@@ -556,7 +605,7 @@ func main() {
 
 	if config.Thumbnails {
 		http.Handle("/thumbnail/", ThumbnailHandler(config.InputDir))
-		go PreGenerateThumbnails(files, config.InputDir)
+		go PreGenerateThumbnails(config.InputDir, config.OutputDir)
 	}
 
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir(filepath.Join(config.OutputDir, "static")))))
