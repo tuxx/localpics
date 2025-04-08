@@ -284,28 +284,85 @@ async function showFileModal(file) {
 }
 
 /**
- * Hide modal
- * @param {string} modalId - ID of the modal to hide
- * @param {Event} event - Click event
+ * Show video modal for on-demand playback
+ * @param {Object} file - File data
+ * @param {number} videoIndex - Index of the video in data array (relative to currently loaded data)
  */
-function hideModal(modalId, event) {
-  if (event.target.id === modalId || event.target.classList.contains("modal")) {
-    document.getElementById(modalId).style.display = "none";
-  }
-  // Stop video playback if video modal is closed
-  if (modalId === "videoModal") {
-    stopVideoPlayback();
-  }
+function showVideoModal(file, videoIndex) {
+  const modal = document.getElementById("videoModal");
+  const videoPlayer = document.getElementById("modalVideo");
+
+  // --- Reset Player State ---
+  videoPlayer.pause(); // Pause any currently playing video
+  videoPlayer.removeAttribute("src"); // Remove the old source
+  videoPlayer.load(); // Reset the media element
+  videoPlayer.currentTime = 0; // Reset time
+  // Clear previous event listeners to avoid duplicates
+  const newPlayer = videoPlayer.cloneNode(true);
+  videoPlayer.parentNode.replaceChild(newPlayer, videoPlayer);
+  const cleanVideoPlayer = document.getElementById("modalVideo"); // Re-select the new node
+  // --- End Reset ---
+
+  // Set new source
+  cleanVideoPlayer.src = file.path;
+  document.getElementById("videoDownloadBtn").href = file.path;
+  document.getElementById("videoDownloadBtn").download = file.name;
+
+  // Show file details
+  document.getElementById("videoModalTitle").textContent = file.name;
+  document.getElementById("videoModalSize").textContent = formatFileSize(
+    file.size,
+  );
+
+  // Add event listener to play when ready
+  const playPromiseHandler = () => {
+    cleanVideoPlayer.play().catch((e) => {
+      // Autoplay might be blocked by the browser, which is fine.
+      // User can click play manually.
+      window.debugLog("Autoplay prevented or failed:", e);
+    });
+    // Remove listener after first trigger
+    cleanVideoPlayer.removeEventListener("canplay", playPromiseHandler);
+  };
+  cleanVideoPlayer.addEventListener("canplay", playPromiseHandler);
+
+  // Handle potential errors loading the video source
+  const errorHandler = (e) => {
+    console.error("Error loading video:", e);
+    document.getElementById("videoModalTitle").textContent =
+      `Error loading: ${file.name}`;
+    // Optionally display an error message in the modal body
+    cleanVideoPlayer.removeEventListener("error", errorHandler);
+  };
+  cleanVideoPlayer.addEventListener("error", errorHandler);
+
+  modal.style.display = "flex";
+
+  // Explicitly load the new source
+  cleanVideoPlayer.load();
+
+  // We don't call play() immediately anymore.
+  // It will be called by the 'canplay' event listener.
 }
 
 /**
- * Stop video playback and clear the video source when modal is closed
- * Prevents memory leaks by ensuring the video element doesn't retain references to large video files
+ * Hide a modal and stop media playback if applicable
+ * @param {string} modalId - ID of the modal to hide
+ * @param {Event} event - The click event
  */
-function stopVideoPlayback() {
-  const videoPlayer = document.getElementById("modalVideo");
-  if (videoPlayer) {
-    videoPlayer.pause();
-    videoPlayer.src = ""; // Clear source to free memory
+function hideModal(modalId, event) {
+  // Only hide if the click is on the modal background itself
+  if (event.target.id === modalId) {
+    const modal = document.getElementById(modalId);
+    modal.style.display = "none";
+
+    // Stop video/audio playback when modal closes
+    if (modalId === "videoModal") {
+      const videoPlayer = document.getElementById("modalVideo");
+      videoPlayer.pause();
+      videoPlayer.removeAttribute("src"); // Prevent further loading
+      videoPlayer.load(); // Reset element
+    }
+    // Add similar logic for audio if needed
   }
 }

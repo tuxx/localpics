@@ -31,7 +31,7 @@ window.addEventListener("DOMContentLoaded", function () {
   debugLogging = document.body.getAttribute("data-debug-enabled") === "true";
   window.debugLog = function (message, ...args) {
     if (debugLogging) {
-      window.debugLog("[DEBUG]", message, ...args);
+      console.debug("[DEBUG]", message, ...args);
     }
   };
   initApp();
