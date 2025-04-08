@@ -191,9 +191,10 @@ function checkForMoreContent() {
     render().then(() => {
       loadingMore = false;
 
-      // If we're still not filling the viewport and have more content, keep loading
-      if (!endReached && documentHeight < viewportHeight * 1.5) {
-        setTimeout(checkForMoreContent, 100);
+      // Use requestAnimationFrame instead of setTimeout for better performance
+      // and to prevent stack overflow
+      if (!endReached && document.body.offsetHeight < viewportHeight * 1.5) {
+        requestAnimationFrame(checkForMoreContent);
       }
     });
   }
