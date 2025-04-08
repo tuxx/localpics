@@ -322,9 +322,9 @@ function showVideoModal(file, videoIndex) {
       window.debugLog("Autoplay prevented or failed:", e);
     });
     // Remove listener after first trigger
-    cleanVideoPlayer.removeEventListener("canplay", playPromiseHandler);
+    cleanVideoPlayer.removeEventListener("canplaythrough", playPromiseHandler);
   };
-  cleanVideoPlayer.addEventListener("canplay", playPromiseHandler);
+  cleanVideoPlayer.addEventListener("canplaythrough", playPromiseHandler);
 
   // Handle potential errors loading the video source
   const errorHandler = (e) => {
