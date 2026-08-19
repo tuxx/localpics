@@ -1,0 +1,93 @@
+{
+  "meta.title": "媒体查看器",
+
+  "nav.home": "🏠 首页",
+  "nav.image": "图片",
+  "nav.video": "视频",
+  "nav.audio": "音频",
+  "nav.text": "文本文档",
+  "nav.code": "代码文件",
+  "nav.pdf": "PDF 文档",
+  "nav.archive": "压缩文件",
+  "nav.other": "其他",
+
+  "intro.title": "📁 媒体查看器",
+  "intro.welcome": "欢迎！点击上方分类浏览您的文件。向下滚动加载更多。点击图片查看原图及元数据信息，如分辨率、EXIF 信息和下载选项。",
+
+  "stats.title": "文件统计",
+  "stats.type": "类型",
+  "stats.count": "数量",
+  "stats.percentage": "百分比",
+  "stats.total": "总计",
+  "stats.loading": "正在加载文件统计...",
+  "stats.noData": "暂无文件统计数据。",
+
+  "loading.files": "正在加载文件...",
+  "loading.fileStats": "正在加载文件统计...",
+  "loading.imageData": "正在加载图片数据...",
+  "loading.file": "正在加载文件...",
+
+  "error.loadingFiles": "加载文件时出错",
+  "error.loadingFileStats": "加载文件统计失败：{{error}}",
+  "error.loadingFile": "加载文件错误",
+  "error.tryAgain": "重试",
+  "error.noMetadata": "此图片暂无元数据。",
+  "error.exifProcessing": "EXIF 数据处理错误",
+  "error.exifReading": "读取 EXIF 数据错误",
+
+  "modal.imagePreview": "图片预览",
+  "modal.filePreview": "文件预览",
+  "modal.videoPlayback": "视频播放",
+
+  "actions.viewDetails": "查看图片详情",
+  "actions.download": "下载",
+  "actions.downloadFile": "📥 下载文件",
+  "actions.viewFullFile": "查看完整文件",
+
+  "image.resolution": "分辨率",
+  "image.file": "文件",
+  "image.size": "大小",
+  "image.dateTaken": "拍摄日期",
+  "image.camera": "相机",
+  "image.exposure": "曝光时间",
+  "image.aperture": "光圈",
+  "image.iso": "ISO 感光度",
+  "image.focalLength": "焦距",
+  "image.gps": "GPS 坐标",
+  "image.viewOnMap": "在地图上查看",
+  "image.allExifData": "所有 EXIF 数据",
+
+  "table.filename": "📥 文件名",
+  "table.size": "大小",
+  "table.modified": "修改时间",
+  "table.play": "播放",
+
+  "zoom.in": "放大视图",
+  "zoom.out": "缩小视图",
+  "zoom.level": "缩放级别",
+
+  "navigation.backToTop": "返回顶部",
+  "navigation.prev": "上一个",
+  "navigation.next": "下一个",
+
+  "language.selector": "选择语言",
+  "language.en-US": "English",
+  "language.zh-CN": "简体中文",
+
+  "fileInfo.bytes": "字节",
+  "fileInfo.kb": "KB",
+  "fileInfo.mb": "MB",
+  "fileInfo.gb": "GB",
+  "fileInfo.tb": "TB",
+
+  "content.truncated": "...（内容已截断）",
+
+  "category.image": "图片",
+  "category.video": "视频",
+  "category.audio": "音频",
+  "category.text": "文本",
+  "category.code": "代码",
+  "category.pdf": "PDF",
+  "category.archive": "压缩包",
+  "category.other": "其他"
+}

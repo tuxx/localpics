@@ -22,7 +22,7 @@ import (
 //go:embed template/index.html
 var templateFS embed.FS
 
-//go:embed static/css static/js
+//go:embed static/css static/js static/locales
 var staticFS embed.FS
 
 // Version information
@@ -63,7 +63,9 @@ type Config struct {
 	DebugLog       bool   `json:"debug_log"`
 }
 
-// Debug loggin function
+var debugLogging bool
+
+// Debug logging function
 func debugLog(format string, v ...interface{}) {
 	if debugLogging {
 		log.Printf("[DEBUG] "+format, v...)
@@ -445,6 +447,20 @@ func main() {
 
 	flag.Parse()
 
+	// Enable CORS for cross-origin requests (needed for EXIF reading)
+	corsMiddleware := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+			if r.Method == "OPTIONS" {
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+
 	if *showVersion {
 		fmt.Printf("LocalPics\nVersion: %s\nCommit: %s\nBuildDate: %s\n", Version, Commit, BuildDate)
 		os.Exit(0)
@@ -508,12 +524,7 @@ func main() {
 		InitThumbnails(true, config.ThumbnailCache, config.PreGenerate, config.DebugLog)
 	}
 
-	if config.InputDir == "" {
-		fmt.Fprintln(os.Stderr, "Error: input directory (-indir) not specified and not set in config file.")
-		flag.Usage()
-		os.Exit(1)
-	}
-
+	// Setup temporary output directory if needed
 	tempOut := false
 	if config.OutputDir == "" {
 		temp, err := os.MkdirTemp("", "localpics-*")
@@ -528,6 +539,13 @@ func main() {
 		log.Fatalf("failed to create output directory: %v", err)
 	}
 
+	// Single-directory mode
+	if config.InputDir == "" {
+		fmt.Fprintln(os.Stderr, "Error: input directory (-indir) not specified and not set in config file.")
+		flag.Usage()
+		os.Exit(1)
+	}
+
 	files, err := scanDirectory(config.InputDir, "/media", config.Recursive)
 	if err != nil {
 		log.Fatalf("failed to scan directory: %v", err)
@@ -537,6 +555,11 @@ func main() {
 		log.Fatalf("failed to write JSON files: %v", err)
 	}
 
+	if config.Thumbnails {
+		go PreGenerateThumbnails(files, config.InputDir)
+	}
+
+	// Generate HTML
 	if err := generateHTML(config.OutputDir, config.AllowDelete, config.Thumbnails, config.DebugLog); err != nil {
 		log.Fatalf("failed to write HTML file: %v", err)
 	}
@@ -549,19 +572,23 @@ func main() {
 		cleanupOnExit(config.OutputDir)
 	}
 
+	// Setup routes
 	if config.AllowDelete {
 		fmt.Println("⚠️ WARNING: File deletion API is enabled")
-		http.Handle("/delete/", FileDeleteHandler(config.InputDir, true))
+		http.Handle("/delete/", corsMiddleware(FileDeleteHandler(config.InputDir, true)))
 	}
 
 	if config.Thumbnails {
-		http.Handle("/thumbnail/", ThumbnailHandler(config.InputDir))
-		go PreGenerateThumbnails(files, config.InputDir)
+		http.Handle("/thumbnail/", corsMiddleware(ThumbnailHandler(config.InputDir)))
 	}
 
-	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir(filepath.Join(config.OutputDir, "static")))))
-	http.Handle("/media/", http.StripPrefix("/media/", http.FileServer(http.Dir(config.InputDir))))
-	http.Handle("/", http.FileServer(http.Dir(config.OutputDir)))
+	// Static files
+	http.Handle("/static/", corsMiddleware(http.StripPrefix("/static/", http.FileServer(http.Dir(filepath.Join(config.OutputDir, "static"))))))
+
+	// Media files
+	http.Handle("/media/", corsMiddleware(http.StripPrefix("/media/", http.FileServer(http.Dir(config.InputDir)))))
+
+	http.Handle("/", corsMiddleware(http.FileServer(http.Dir(config.OutputDir))))
 
 	fmt.Printf("Serving on http://%s\n", config.Host)
 	log.Fatal(http.ListenAndServe(config.Host, nil))

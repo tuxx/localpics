@@ -25,14 +25,14 @@ function createTableStructure(fileType) {
 
   // Common headers for all table views
   headerRow.innerHTML = `
-    <th>📥 Filename</th>
-    <th>Size</th>
-    <th>Modified</th>
+    <th>${t("table.filename")}</th>
+    <th>${t("table.size")}</th>
+    <th>${t("table.modified")}</th>
   `;
 
   // Add play column for audio files
   if (fileType === "audio") {
-    headerRow.innerHTML += `<th>Play</th>`;
+    headerRow.innerHTML += `<th>${t("table.play")}</th>`;
   }
 
   thead.appendChild(headerRow);

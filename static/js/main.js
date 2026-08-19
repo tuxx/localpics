@@ -24,7 +24,14 @@ var sharedThumbnails = {}; // Global cache of loaded thumbnails
 var firstThumbnailForSeries = {}; // Track the first thumbnail for each video series
 
 // Initialize application when DOM is loaded
-window.addEventListener("DOMContentLoaded", function () {
+window.addEventListener("DOMContentLoaded", async function () {
+  // Initialize i18n first
+  if (window.i18n) {
+    await window.i18n.init();
+    // Create language selector after i18n is initialized
+    window.i18n.createLanguageSelector('languageContainer');
+  }
+  
   thumbnailsEnabled =
     document.body.getAttribute("data-thumbnails-enabled") === "true";
   debugLogging = document.body.getAttribute("data-debug-enabled") === "true";
@@ -40,9 +47,12 @@ window.addEventListener("DOMContentLoaded", function () {
  * Initialize the application
  */
 function initApp() {
-  // Fetch file statistics
-  fetchAllStats().then(() => {
-    updateNavigation();
+  // Load albums (multi-album mode detection)
+  loadAlbums().then(() => {
+    // Fetch file statistics after albums are loaded
+    fetchAllStats().then(() => {
+      updateNavigation();
+    });
   });
 
   // Set up observers
@@ -132,11 +142,15 @@ function setupImageObserver() {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
             const img = entry.target;
-            const src = img.dataset.src;
+            // Ensure we use the correct src from dataset
+            const src = img.dataset.src || img.getAttribute("data-src");
 
             if (src) {
+              // Set the src attribute to trigger loading
               img.src = src;
+              // Remove data-src to prevent re-loading
               img.removeAttribute("data-src");
+              // Unobserve after loading starts
               observer.unobserve(img);
             }
           }

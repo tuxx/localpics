@@ -39,14 +39,67 @@
   margin-top: 0.2rem;
 }
 
-/* Media queries */
+/* Mobile navigation */
 @media (max-width: 768px) {
+  /* Navigation bar */
+  #navbar {
+    flex-wrap: wrap;
+    padding: 0.5rem;
+    gap: 0.3rem;
+  }
+
+  #navbar a {
+    font-size: 0.8rem;
+    padding: 0.3rem 0.6rem;
+    margin: 0.1rem;
+  }
+
+  #navbar .nav-brand {
+    font-size: 0.9rem;
+    padding: 0.3rem 0.6rem;
+  }
+
+  /* Language selector */
+  #languageSelector {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.4rem;
+    max-width: 80px;
+  }
+
+  /* Home intro */
+  #intro {
+    padding: 0.5rem;
+  }
+
+  #intro h1 {
+    font-size: 1.5rem;
+  }
+
+  #intro p {
+    font-size: 0.9rem;
+  }
+
+  /* Statistics table */
+  .file-table {
+    font-size: 0.8rem;
+  }
+
+  .file-table th,
+  .file-table td {
+    padding: 6px 8px;
+  }
+
+  .file-table h3 {
+    font-size: 1rem;
+  }
+
+  /* Card grid - tablet */
   .container.zoom-xs {
-    column-count: 4;
+    column-count: 3;
   }
 
   .container.zoom-sm {
-    column-count: 3;
+    column-count: 2;
   }
 
   .container.zoom-md {
@@ -58,38 +111,351 @@
     column-count: 1;
   }
 
+  .container.grid-4 {
+    column-count: 2;
+  }
+
+  .container.grid-2 {
+    column-count: 1;
+  }
+
+  .container.grid-1 {
+    column-count: 1;
+  }
+
+  /* File cards */
+  .file-card {
+    break-inside: avoid;
+    margin-bottom: 0.8rem;
+  }
+
+  .file-card .name {
+    font-size: 0.75rem;
+  }
+
+  .file-card .info {
+    font-size: 0.65rem;
+  }
+
+  .file-card .actions {
+    flex-wrap: wrap;
+    gap: 0.3rem;
+  }
+
+  .file-card .view-full,
+  .file-card .download {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.5rem;
+  }
+
+  /* Video placeholder */
   .video-placeholder .video-play-button {
     font-size: 2rem;
   }
 
   .video-placeholder .video-info {
-    font-size: 0.8rem;
+    font-size: 0.7rem;
   }
 
-  /* Mobile responsive table */
+  /* Modal */
+  .modal {
+    padding: 0.5rem;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .modal img {
+    max-width: 95vw;
+    max-height: 55vh;
+    object-fit: contain;
+  }
+
+  .modal-details {
+    width: 95vw;
+    max-height: 35vh;
+    margin: 0.5rem auto;
+    font-size: 0.8rem;
+    position: relative;
+    bottom: auto;
+    left: auto;
+    transform: none;
+    border-radius: 8px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+    z-index: 1001;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(4px);
+    padding: 0.8rem;
+    overflow-y: auto;
+    flex-shrink: 0;
+  }
+
+  /* Toggle button for details panel */
+  .modal-details-toggle {
+    display: block;
+    width: 100%;
+    padding: 0.4rem;
+    background: rgba(0, 0, 0, 0.05);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    color: #666;
+    text-align: center;
+    margin-bottom: 0.4rem;
+  }
+
+  .modal-details-toggle:hover {
+    background: rgba(0, 0, 0, 0.1);
+  }
+
+  .modal-details.collapsed {
+    max-height: 2.5rem;
+    overflow: hidden;
+    padding-bottom: 0.2rem;
+  }
+
+  .modal-details::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .modal-details::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 2px;
+  }
+
+  .modal-content {
+    width: 95%;
+    height: 85%;
+  }
+
+  .modal-header {
+    padding: 0.6rem;
+    font-size: 0.9rem;
+  }
+
+  .modal-body {
+    padding: 0.6rem;
+  }
+
+  .modal-nav {
+    top: 50%;
+  }
+
+  .modal-nav span {
+    font-size: 1.5rem;
+    padding: 0.3rem 0.6rem;
+    background: rgba(0, 0, 0, 0.4);
+  }
+
+  .modal-actions {
+    top: 5px;
+    right: 5px;
+  }
+
+  .modal-actions button {
+    font-size: 0.7rem;
+    padding: 3px 8px;
+  }
+
+  /* Zoom controls */
+  #zoomControls {
+    gap: 0.2rem;
+  }
+
+  #zoomControls button {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.5rem;
+  }
+
+  /* Table view for mobile */
   .container .file-table {
-    font-size: 0.85rem;
+    font-size: 0.75rem;
   }
 
   .container .file-table th,
   .container .file-table td {
-    padding: 8px 10px;
+    padding: 5px 6px;
   }
 
   /* Make date column smaller on mobile */
   .container .file-table th:nth-child(3),
   .container .file-table td:nth-child(3) {
-    max-width: 80px;
+    max-width: 60px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+
+  /* Hide size column on smaller tablets */
+  .container .file-table th:nth-child(4),
+  .container .file-table td:nth-child(4) {
+    display: none;
+  }
 }
 
 @media (max-width: 480px) {
+  /* Navigation - very small screens */
+  #navbar {
+    padding: 0.3rem;
+    gap: 0.2rem;
+  }
+
+  #navbar a {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.4rem;
+  }
+
+  #navbar .nav-brand {
+    font-size: 0.8rem;
+    padding: 0.2rem 0.4rem;
+    width: 100%;
+    text-align: center;
+    margin-bottom: 0.2rem;
+  }
+
+  #languageSelector {
+    font-size: 0.6rem;
+    padding: 0.1rem 0.3rem;
+    max-width: 60px;
+  }
+
+  /* Card grid - phone */
+  .container.zoom-xs {
+    column-count: 2;
+  }
+
+  .container.zoom-sm {
+    column-count: 1;
+  }
+
+  .container.zoom-md {
+    column-count: 1;
+  }
+
+  .container.zoom-lg,
+  .container.zoom-xl {
+    column-count: 1;
+  }
+
+  .container.grid-4 {
+    column-count: 1;
+  }
+
+  .container.grid-2 {
+    column-count: 1;
+  }
+
+  .container.grid-1 {
+    column-count: 1;
+  }
+
+  /* Container padding */
+  .container {
+    padding: 0.5rem;
+    column-gap: 0.5rem;
+  }
+
+  /* File cards - phone */
+  .file-card {
+    margin-bottom: 0.5rem;
+  }
+
+  .file-card .name {
+    font-size: 0.7rem;
+  }
+
+  .file-card .info {
+    font-size: 0.6rem;
+  }
+
+  /* Home intro - phone */
+  #intro h1 {
+    font-size: 1.2rem;
+  }
+
+  #intro p {
+    font-size: 0.8rem;
+  }
+
+  /* Statistics table - phone */
+  .file-table {
+    font-size: 0.7rem;
+  }
+
+  .file-table th,
+  .file-table td {
+    padding: 4px 4px;
+  }
+
+  .file-table h3 {
+    font-size: 0.9rem;
+  }
+
   /* Hide some columns on very small screens */
   .container .file-table th:nth-child(3),
   .container .file-table td:nth-child(3) {
     display: none;
+  }
+
+  .container .file-table th:nth-child(4),
+  .container .file-table td:nth-child(4) {
+    display: none;
+  }
+
+  /* Modal - phone */
+  .modal {
+    padding: 0.2rem;
+  }
+
+  .modal img {
+    max-width: 95vw;
+    max-height: 60vh;
+  }
+
+  .modal-details {
+    width: 95vw;
+    max-height: 35vh;
+    font-size: 0.7rem;
+    padding: 0.6rem;
+  }
+
+  .modal-content {
+    width: 98%;
+    height: 80%;
+  }
+
+  .modal-header {
+    padding: 0.4rem;
+    font-size: 0.8rem;
+  }
+
+  .modal-body {
+    padding: 0.4rem;
+  }
+
+  .modal-nav span {
+    font-size: 1.2rem;
+    padding: 0.2rem 0.4rem;
+  }
+
+  .modal-actions button {
+    font-size: 0.6rem;
+    padding: 2px 6px;
+  }
+
+  /* Video placeholder - phone */
+  .video-placeholder .video-play-button {
+    font-size: 1.5rem;
+  }
+
+  .video-placeholder .video-info {
+    font-size: 0.6rem;
+  }
+
+  /* Zoom controls - phone */
+  #zoomControls button {
+    font-size: 0.6rem;
+    padding: 0.1rem 0.3rem;
   }
 }

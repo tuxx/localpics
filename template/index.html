@@ -1,128 +1,122 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Media Viewer</title>
-    <link
-      href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css"
-      rel="stylesheet"
-    />
-    <link rel="stylesheet" href="/static/css/main.css" />
-    <link rel="stylesheet" href="/static/css/components.css" />
-    <link rel="stylesheet" href="/static/css/layout.css" />
-    <link rel="stylesheet" href="/static/css/responsive.css" />
-  </head>
-  <body
-    data-thumbnails-enabled="{{.ThumbnailsEnabled}}"
-    data-debug-enabled="{{.DebugLogging}}"
-  >
-    <div class="nav" id="navbar">
-      <a onclick="showIntro()" class="active" data-category="home">🏠 Home</a>
-      <a onclick="load('image')" data-category="image">Images</a>
-      <a onclick="load('video')" data-category="video">Videos</a>
-      <a onclick="load('audio')" data-category="audio">Audio</a>
-      <a onclick="load('text')" data-category="text">Text Docs</a>
-      <a onclick="load('code')" data-category="code">Code Files</a>
-      <a onclick="load('pdf')" data-category="pdf">PDFs</a>
-      <a onclick="load('archive')" data-category="archive">Archives</a>
-      <a onclick="load('other')" data-category="other">Other</a>
-      <span class="spacer"></span>
-      <a onclick="zoomIn()" title="Zoom In" class="zoom-control">🔍+</a>
-      <a onclick="zoomOut()" title="Zoom Out" class="zoom-control">🔍-</a>
-      <span
-        style="
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title data-i18n="meta.title">Media Viewer</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/css/main.css" />
+  <link rel="stylesheet" href="/static/css/components.css" />
+  <link rel="stylesheet" href="/static/css/layout.css" />
+  <link rel="stylesheet" href="/static/css/responsive.css" />
+</head>
+
+<body data-thumbnails-enabled="{{.ThumbnailsEnabled}}" data-debug-enabled="{{.DebugLogging}}">
+  <div class="nav" id="navbar">
+    <a onclick="showIntro()" class="active" data-category="home" data-i18n="nav.home">🏠 Home</a>
+    <a onclick="load('image')" data-category="image" data-i18n="nav.image">Images</a>
+    <a onclick="load('video')" data-category="video" data-i18n="nav.video">Videos</a>
+    <a onclick="load('audio')" data-category="audio" data-i18n="nav.audio">Audio</a>
+    <a onclick="load('text')" data-category="text" data-i18n="nav.text">Text Docs</a>
+    <a onclick="load('code')" data-category="code" data-i18n="nav.code">Code Files</a>
+    <a onclick="load('pdf')" data-category="pdf" data-i18n="nav.pdf">PDFs</a>
+    <a onclick="load('archive')" data-category="archive" data-i18n="nav.archive">Archives</a>
+    <a onclick="load('other')" data-category="other" data-i18n="nav.other">Other</a>
+    <span class="spacer"></span>
+    <span id="albumSelectorContainer" style="display: none; align-items: center; gap: 6px; background: rgba(0, 122, 204, 0.15); padding: 2px 10px 2px 8px; border-radius: 8px; border: 1px solid rgba(0, 122, 204, 0.3);">
+      <span style="font-size: 0.9em;">📂</span>
+      <span style="font-size: 0.75em; opacity: 0.7; font-weight: 400;">相册</span>
+      <select id="albumSelector" style="background: transparent; color: #fff; border: none; border-radius: 4px; padding: 4px 24px 4px 4px; font-size: 0.9em; font-weight: 600; cursor: pointer; min-width: 80px; appearance: auto;"></select>
+    </span>
+    <a onclick="zoomIn()" data-i18n-title="zoom.in" title="Zoom In" class="zoom-control">🔍+</a>
+    <a onclick="zoomOut()" data-i18n-title="zoom.out" title="Zoom Out" class="zoom-control">🔍-</a>
+    <div id="languageContainer" style="display: inline-block; margin-right: 10px;"></div>
+    <span style="
           float: right;
           margin-right: 12px;
           font-size: 0.8em;
           opacity: 0.5;
           pointer-events: none;
-        "
-        >v{{.Version}}</span
-      >
+        ">v{{.Version}}</span>
+  </div>
+
+  <div class="intro" id="intro">
+    <h2 data-i18n="intro.title">📁 Media Viewer</h2>
+    <p data-i18n="intro.welcome">
+      Welcome! Click a category above to explore your files. Scroll down to
+      load more. Click on an image to view full-size and see metadata like
+      resolution, EXIF, and download options.
+    </p>
+    <div id="fileStats"></div>
+  </div>
+
+  <div class="container" id="container"></div>
+
+  <!-- Image Modal -->
+  <div class="modal" id="imageModal" onclick="hideModal('imageModal', event)">
+    <div class="modal-nav" id="imageModalNav">
+      <span onclick="navigateModal(-1)" id="prevButton" data-i18n-title="navigation.prev">&lt;</span>
+      <span onclick="navigateModal(1)" id="nextButton" data-i18n-title="navigation.next">&gt;</span>
     </div>
-
-    <div class="intro" id="intro">
-      <h2>📁 Media Viewer</h2>
-      <p>
-        Welcome! Click a category above to explore your files. Scroll down to
-        load more. Click on an image to view full-size and see metadata like
-        resolution, EXIF, and download options.
-      </p>
-      <div id="fileStats"></div>
+    <img id="modalImg" src="" alt="preview" />
+    <div class="modal-actions">
+      <button onclick="event.stopPropagation(); toggleExif();" data-i18n="actions.viewDetails">
+        View Image Details
+      </button>
+      <a id="imageDownloadBtn" href="#" download style="text-decoration: none">
+        <button onclick="event.stopPropagation();" data-i18n="actions.download">Download</button>
+      </a>
     </div>
+    <div class="modal-details" id="modalDetails"></div>
+  </div>
 
-    <div class="container" id="container"></div>
-
-    <!-- Image Modal -->
-    <div class="modal" id="imageModal" onclick="hideModal('imageModal', event)">
-      <div class="modal-nav" id="imageModalNav">
-        <span onclick="navigateModal(-1)" id="prevButton">&lt;</span>
-        <span onclick="navigateModal(1)" id="nextButton">&gt;</span>
+  <!-- Text/Code Modal -->
+  <div class="modal" id="fileModal" onclick="hideModal('fileModal', event)">
+    <div class="modal-content" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3 id="fileModalTitle" data-i18n="modal.filePreview">File Preview</h3>
+        <a id="fileDownloadBtn" href="#" download class="download-button" data-i18n="actions.download">Download</a>
       </div>
-      <img id="modalImg" src="" alt="preview" />
-      <div class="modal-actions">
-        <button onclick="event.stopPropagation(); toggleExif();">
-          View Image Details
-        </button>
-        <a
-          id="imageDownloadBtn"
-          href="#"
-          download
-          style="text-decoration: none"
-        >
-          <button onclick="event.stopPropagation();">Download</button>
-        </a>
-      </div>
-      <div class="modal-details" id="modalDetails"></div>
-    </div>
-
-    <!-- Text/Code Modal -->
-    <div class="modal" id="fileModal" onclick="hideModal('fileModal', event)">
-      <div class="modal-content" onclick="event.stopPropagation()">
-        <div class="modal-header">
-          <h3 id="fileModalTitle">File Preview</h3>
-          <a id="fileDownloadBtn" href="#" download class="download-button"
-            >Download</a
-          >
-        </div>
-        <div class="modal-body" id="fileModalBody">
-          <!-- Content will be inserted here -->
-        </div>
+      <div class="modal-body" id="fileModalBody">
+        <!-- Content will be inserted here -->
       </div>
     </div>
+  </div>
 
-    <!-- Video Modal -->
-    <div class="modal" id="videoModal" onclick="hideModal('videoModal', event)">
-      <div class="modal-content" onclick="event.stopPropagation()">
-        <div class="modal-header">
-          <h3 id="videoModalTitle">Video Playback</h3>
-          <div class="modal-video-info">
-            <span id="videoModalSize"></span>
-            <a id="videoDownloadBtn" href="#" download class="download-button"
-              >Download</a
-            >
-          </div>
-        </div>
-        <div class="modal-body video-modal-body">
-          <video id="modalVideo" controls></video>
+  <!-- Video Modal -->
+  <div class="modal" id="videoModal" onclick="hideModal('videoModal', event)">
+    <div class="modal-content" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3 id="videoModalTitle" data-i18n="modal.videoPlayback">Video Playback</h3>
+        <div class="modal-video-info">
+          <span id="videoModalSize"></span>
+          <a id="videoDownloadBtn" href="#" download class="download-button" data-i18n="actions.download">Download</a>
         </div>
       </div>
+      <div class="modal-body video-modal-body">
+        <video id="modalVideo" controls></video>
+      </div>
     </div>
+  </div>
 
-    <button class="top-button" onclick="scrollToTop()">Back to Top</button>
+  <button class="top-button" onclick="scrollToTop()">Back to Top</button>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/exif-js/2.3.0/exif.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/exif-js/2.3.0/exif.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
-    <!-- Application JavaScript -->
-    <script src="/static/js/utils.js"></script>
-    <script src="/static/js/modals.js"></script>
-    <script src="/static/js/tableView.js"></script>
-    <script src="/static/js/cardView.js"></script>
-    <script src="/static/js/fileLoader.js"></script>
-    <script src="/static/js/main.js"></script>
-  </body>
+  <!-- Internationalization -->
+  <script src="/static/js/i18n.js"></script>
+
+  <!-- Application JavaScript -->
+  <script src="/static/js/utils.js"></script>
+  <script src="/static/js/modals.js"></script>
+  <script src="/static/js/tableView.js"></script>
+  <script src="/static/js/cardView.js"></script>
+  <script src="/static/js/fileLoader.js"></script>
+  <script src="/static/js/main.js"></script>
+</body>
+
 </html>

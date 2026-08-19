@@ -18,14 +18,24 @@ function showImageModal(i) {
   prevButton.classList.toggle("disabled", i <= 0);
   nextButton.classList.toggle("disabled", i >= data.length - 1);
 
-  // Set image and download link
+  // Set crossOrigin to allow EXIF reading
+  modalImg.crossOrigin = "anonymous";
   modalImg.src = file.path;
   document.getElementById("imageDownloadBtn").href = file.path;
   modal.style.display = "flex";
 
   // Reset EXIF panel
   if (detailsVisible) {
-    toggleExif(true);
+    // Wait for image to load before reading EXIF
+    modalImg.onload = function() {
+      toggleExif(true);
+    };
+    // Fallback: if image already loaded or fails, try after a short delay
+    setTimeout(function() {
+      if (modalImg.complete) {
+        toggleExif(true);
+      }
+    }, 100);
   } else {
     document.getElementById("modalDetails").style.display = "none";
   }
@@ -78,123 +88,180 @@ function toggleExif(forceUpdate = false) {
   // Show loading state
   details.style.display = "block";
   details.innerHTML =
-    '<div class="loading-container"><div class="spinner"></div><p>Loading image data...</p></div>';
+    '<div class="loading-container"><div class="spinner"></div><p>' + t('loading.imageData') + '</p></div>';
 
   const img = document.getElementById("modalImg");
 
   // Basic image info
   const info = [
-    `<strong>Resolution:</strong> ${img.naturalWidth} × ${img.naturalHeight}`,
+    `<strong>${t('image.resolution')}:</strong> ${img.naturalWidth} × ${img.naturalHeight}`,
   ];
-  info.push(`<strong>File:</strong> ${data[modalIndex].name}`);
-  info.push(`<strong>Size:</strong> ${formatFileSize(data[modalIndex].size)}`);
+  info.push(`<strong>${t('image.file')}:</strong> ${data[modalIndex].name}`);
+  info.push(`<strong>${t('image.size')}:</strong> ${formatFileSize(data[modalIndex].size)}`);
 
   // Try to get EXIF data
   try {
-    EXIF.getData(img, function () {
-      try {
-        const exif = EXIF.getAllTags(this);
+    if (typeof EXIF === 'undefined') {
+      console.error('EXIF library not loaded');
+      details.innerHTML = info.join("<br>") + "<p>EXIF library not loaded</p>";
+      return;
+    }
+    
+    // Ensure image is fully loaded before reading EXIF
+    if (!img.complete) {
+      img.onload = function() {
+        readExifData(img, info, details);
+      };
+      // Set a timeout fallback
+      setTimeout(function() {
+        if (!img.complete) {
+          img.onload = null;
+          readExifData(img, info, details);
+        }
+      }, 3000);
+      return;
+    }
+    
+    readExifData(img, info, details);
+  } catch (error) {
+    console.error("Error reading EXIF data:", error);
+    details.innerHTML = info.join("<br>") + "<p>" + t('error.exifReading') + "</p>";
+  }
+}
 
-        if (exif && Object.keys(exif).length > 0) {
-          info.push("<h4>EXIF Metadata</h4>");
+/**
+ * Read EXIF data from image and update details panel
+ * @param {HTMLImageElement} img - Image element
+ * @param {Array} info - Array of info strings
+ * @param {HTMLElement} details - Details container element
+ */
+function readExifData(img, info, details) {
+  EXIF.getData(img, function () {
+    try {
+      const exif = EXIF.getAllTags(this);
+      console.log('EXIF data:', exif);
 
-          // Format date taken if available
-          if (exif.DateTimeOriginal) {
-            const dateParts = exif.DateTimeOriginal.split(" ");
-            const date = dateParts[0].replace(/:/g, "-");
-            const time = dateParts[1];
-            info.push(`<strong>Date Taken:</strong> ${date} ${time}`);
-          }
+      if (exif && Object.keys(exif).length > 0) {
+        // Format date taken if available
+        if (exif.DateTimeOriginal) {
+          const dateParts = exif.DateTimeOriginal.split(" ");
+          const date = dateParts[0].replace(/:/g, "-");
+          const time = dateParts[1] || "";
+          info.push(`<strong>${t('image.dateTaken')}:</strong> ${date} ${time}`);
+        }
 
-          // Camera info
-          if (exif.Make || exif.Model) {
-            const make = exif.Make || "";
-            const model = exif.Model || "";
-            info.push(`<strong>Camera:</strong> ${make} ${model}`.trim());
-          }
+        // Camera info
+        if (exif.Make || exif.Model) {
+          const make = exif.Make || "";
+          const model = exif.Model || "";
+          info.push(`<strong>${t('image.camera')}:</strong> ${make} ${model}`.trim());
+        }
 
-          // Exposure info
-          if (exif.ExposureTime) {
-            const exposureTime =
-              exif.ExposureTime < 1
-                ? `1/${Math.round(1 / exif.ExposureTime)}`
-                : exif.ExposureTime;
-            info.push(`<strong>Exposure:</strong> ${exposureTime} sec`);
-          }
+        // Exposure info
+        if (exif.ExposureTime) {
+          const exposureTime =
+            exif.ExposureTime < 1
+              ? `1/${Math.round(1 / exif.ExposureTime)}`
+              : exif.ExposureTime;
+          info.push(`<strong>${t('image.exposure')}:</strong> ${exposureTime} sec`);
+        }
 
-          if (exif.FNumber) {
-            info.push(`<strong>Aperture:</strong> f/${exif.FNumber}`);
-          }
+        if (exif.FNumber) {
+          info.push(`<strong>${t('image.aperture')}:</strong> f/${exif.FNumber}`);
+        }
 
-          if (exif.ISO) {
-            info.push(`<strong>ISO:</strong> ${exif.ISO}`);
-          }
+        if (exif.ISO) {
+          info.push(`<strong>${t('image.iso')}:</strong> ${exif.ISO}`);
+        }
 
-          if (exif.FocalLength) {
-            info.push(`<strong>Focal Length:</strong> ${exif.FocalLength}mm`);
-          }
+        if (exif.FocalLength) {
+          info.push(`<strong>${t('image.focalLength')}:</strong> ${exif.FocalLength}mm`);
+        }
 
-          // GPS coordinates if available
-          if (exif.GPSLatitude && exif.GPSLongitude) {
-            try {
-              const lat = EXIF.getTag(this, "GPSLatitude");
-              const lon = EXIF.getTag(this, "GPSLongitude");
-              const latRef = EXIF.getTag(this, "GPSLatitudeRef") || "N";
-              const lonRef = EXIF.getTag(this, "GPSLongitudeRef") || "W";
+        // GPS coordinates if available
+        if (exif.GPSLatitude && exif.GPSLongitude) {
+          try {
+            const lat = EXIF.getTag(this, "GPSLatitude");
+            const lon = EXIF.getTag(this, "GPSLongitude");
+            const latRef = EXIF.getTag(this, "GPSLatitudeRef") || "N";
+            const lonRef = EXIF.getTag(this, "GPSLongitudeRef") || "W";
 
-              if (lat && lon) {
-                const latDecimal =
-                  (lat[0] + lat[1] / 60 + lat[2] / 3600) *
-                  (latRef === "N" ? 1 : -1);
-                const lonDecimal =
-                  (lon[0] + lon[1] / 60 + lon[2] / 3600) *
-                  (lonRef === "E" ? 1 : -1);
+            if (lat && lon) {
+              const latDecimal =
+                (lat[0] + lat[1] / 60 + lat[2] / 3600) *
+                (latRef === "N" ? 1 : -1);
+              const lonDecimal =
+                (lon[0] + lon[1] / 60 + lon[2] / 3600) *
+                (lonRef === "E" ? 1 : -1);
 
-                info.push(
-                  `<strong>GPS:</strong> ${latDecimal.toFixed(6)}, ${lonDecimal.toFixed(6)}`,
-                );
-                info.push(
-                  `<a href="https://maps.google.com/?q=${latDecimal.toFixed(6)},${lonDecimal.toFixed(6)}" target="_blank">View on Map</a>`,
-                );
-              }
-            } catch (e) {
-              console.warn("Error processing GPS data:", e);
+              info.push(
+                `<strong>${t('image.gps')}:</strong> ${latDecimal.toFixed(6)}, ${lonDecimal.toFixed(6)}`,
+              );
+              info.push(
+                `<a href="https://maps.google.com/?q=${latDecimal.toFixed(6)},${lonDecimal.toFixed(6)}" target="_blank">${t('image.viewOnMap')}</a>`,
+              );
             }
+          } catch (e) {
+            console.warn("Error processing GPS data:", e);
           }
+        }
 
-          // Add all other EXIF tags in a table
-          info.push("<details><summary>All EXIF Data</summary><table>");
-          for (const tag in exif) {
-            // Skip binary data
-            if (typeof exif[tag] === "object" && exif[tag].length > 20)
-              continue;
+        // Add all other EXIF tags in a collapsible section
+        info.push("<details><summary>" + t('image.allExifData') + "</summary><table>");
+        for (const tag in exif) {
+          // Skip binary data
+          if (typeof exif[tag] === "object" && exif[tag] && exif[tag].length > 20)
+            continue;
 
-            let value = exif[tag];
-            // Format value if it's an array
-            if (Array.isArray(value)) {
-              value = value.join(", ");
-            }
+          let value = exif[tag];
+          // Format value if it's an array
+          if (Array.isArray(value)) {
+            value = value.join(", ");
+          }
+          if (typeof value === 'string' && value.length > 200) {
+            value = value.substring(0, 200) + "...";
+          }
+          if (value !== undefined && value !== null && value !== '') {
             info.push(
               `<tr><td><strong>${tag}</strong></td><td>${value}</td></tr>`,
             );
           }
-          info.push("</table></details>");
-        } else {
-          info.push("<p>No EXIF metadata found in this image.</p>");
         }
-
-        details.innerHTML = info.join("<br>");
-      } catch (error) {
-        console.error("Error processing EXIF data:", error);
-        details.innerHTML =
-          info.join("<br>") + "<p>Error processing EXIF data</p>";
+        info.push("</table></details>");
+      } else {
+        info.push("<p>" + t('error.noMetadata') + "</p>");
       }
-    });
-  } catch (error) {
-    console.error("Error reading EXIF data:", error);
-    details.innerHTML = info.join("<br>") + "<p>Error reading EXIF data</p>";
-  }
+
+      // Use a container div with proper spacing instead of <br> separators
+      const container = document.createElement('div');
+      container.style.cssText = 'display: flex; flex-direction: column; gap: 4px;';
+      
+      // Add each info item as a separate element
+      for (const item of info) {
+        // Check if item contains block-level HTML
+        if (item.includes('<details>') || item.includes('<table>') || item.includes('<h') || item.includes('<p>')) {
+          // For block-level content, use innerHTML directly
+          const wrapper = document.createElement('div');
+          wrapper.innerHTML = item;
+          container.appendChild(wrapper);
+        } else {
+          // For inline content, use a paragraph or div
+          const wrapper = document.createElement('div');
+          wrapper.innerHTML = item;
+          container.appendChild(wrapper);
+        }
+      }
+      
+      details.innerHTML = '';
+      details.appendChild(container);
+    } catch (error) {
+      console.error("Error processing EXIF data:", error);
+      details.innerHTML =
+        info.join("<br>") + "<p>" + t('error.exifProcessing') + "</p>";
+    }
+  });
 }
+
 
 /**
  * Show file modal for text/code files
@@ -212,7 +279,7 @@ async function showFileModal(file) {
 
   // Show loading indicator
   modalBody.innerHTML =
-    '<div class="loading-container"><div class="spinner"></div><p>Loading file...</p></div>';
+    '<div class="loading-container"><div class="spinner"></div><p>' + t('loading.file') + '</p></div>';
   modal.style.display = "flex";
 
   try {
@@ -277,7 +344,7 @@ async function showFileModal(file) {
   } catch (error) {
     console.error("Error loading file:", error);
     modalBody.innerHTML = `<div class="error-container">
-      <h3>Error Loading File</h3>
+      <h3>${t('error.loadingFile')}</h3>
       <p>${error.message}</p>
     </div>`;
   }
