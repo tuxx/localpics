@@ -1,0 +1,93 @@
+{
+  "meta.title": "Media Viewer",
+
+  "nav.home": "🏠 Home",
+  "nav.image": "Images",
+  "nav.video": "Videos",
+  "nav.audio": "Audio",
+  "nav.text": "Text Docs",
+  "nav.code": "Code Files",
+  "nav.pdf": "PDFs",
+  "nav.archive": "Archives",
+  "nav.other": "Other",
+
+  "intro.title": "📁 Media Viewer",
+  "intro.welcome": "Welcome! Click a category above to explore your files. Scroll down to load more. Click on an image to view full-size and see metadata like resolution, EXIF, and download options.",
+
+  "stats.title": "File Statistics",
+  "stats.type": "Type",
+  "stats.count": "Count",
+  "stats.percentage": "Percentage",
+  "stats.total": "Total",
+  "stats.loading": "Loading file statistics...",
+  "stats.noData": "No file statistics available.",
+
+  "loading.files": "Loading files...",
+  "loading.fileStats": "Loading file statistics...",
+  "loading.imageData": "Loading image data...",
+  "loading.file": "Loading file...",
+
+  "error.loadingFiles": "Error Loading Files",
+  "error.loadingFileStats": "Failed to load file statistics: {{error}}",
+  "error.loadingFile": "Error Loading File",
+  "error.tryAgain": "Try Again",
+  "error.noMetadata": "No metadata found in this image.",
+  "error.exifProcessing": "Error processing EXIF data",
+  "error.exifReading": "Error reading EXIF data",
+
+  "modal.imagePreview": "Image Preview",
+  "modal.filePreview": "File Preview",
+  "modal.videoPlayback": "Video Playback",
+
+  "actions.viewDetails": "View Image Details",
+  "actions.download": "Download",
+  "actions.downloadFile": "📥 Download File",
+  "actions.viewFullFile": "View Full File",
+
+  "image.resolution": "Resolution",
+  "image.file": "File",
+  "image.size": "Size",
+  "image.dateTaken": "Date Taken",
+  "image.camera": "Camera",
+  "image.exposure": "Exposure",
+  "image.aperture": "Aperture",
+  "image.iso": "ISO",
+  "image.focalLength": "Focal Length",
+  "image.gps": "GPS",
+  "image.viewOnMap": "View on Map",
+  "image.allExifData": "All EXIF Data",
+
+  "table.filename": "📥 Filename",
+  "table.size": "Size",
+  "table.modified": "Modified",
+  "table.play": "Play",
+
+  "zoom.in": "Zoom In",
+  "zoom.out": "Zoom Out",
+  "zoom.level": "Zoom Level",
+
+  "navigation.backToTop": "Back to Top",
+  "navigation.prev": "Previous",
+  "navigation.next": "Next",
+
+  "language.selector": "Select Language",
+  "language.en-US": "English",
+  "language.zh-CN": "简体中文",
+
+  "fileInfo.bytes": "Bytes",
+  "fileInfo.kb": "KB",
+  "fileInfo.mb": "MB",
+  "fileInfo.gb": "GB",
+  "fileInfo.tb": "TB",
+
+  "content.truncated": "... (content truncated)",
+
+  "category.image": "Image",
+  "category.video": "Video",
+  "category.audio": "Audio",
+  "category.text": "Text",
+  "category.code": "Code",
+  "category.pdf": "PDF",
+  "category.archive": "Archive",
+  "category.other": "Other"
+}

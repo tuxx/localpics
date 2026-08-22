@@ -8,11 +8,17 @@
  * @returns {string} Formatted file size
  */
 function formatFileSize(bytes) {
-  if (bytes === 0) return "0 Bytes";
+  if (bytes === 0) return "0 " + t("fileInfo.bytes");
   const k = 1024;
-  const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
+  const sizeKeys = [
+    "fileInfo.bytes",
+    "fileInfo.kb",
+    "fileInfo.mb",
+    "fileInfo.gb",
+    "fileInfo.tb",
+  ];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + t(sizeKeys[i]);
 }
 
 /**

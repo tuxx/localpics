@@ -17,8 +17,8 @@ function createCardElement(file, i, startIndex) {
   div.innerHTML = `
     <div class="name">${file.name}</div>
     <div class="info">
-      Size: ${formatFileSize(file.size)} •
-      Modified: ${new Date(file.modified).toLocaleString()}
+      ${t('table.size')}: ${formatFileSize(file.size)} •
+      ${t('table.modified')}: ${new Date(file.modified).toLocaleString()}
     </div>
   `;
 
@@ -73,7 +73,19 @@ function appendImageContent(div, file, imageIndex) {
   const img = document.createElement("img");
   img.style.opacity = "0"; // Start hidden
   img.setAttribute("loading", "lazy");
-  img.dataset.src = file.path; // Store path but don't load immediately
+  // Use thumbnail if enabled, otherwise fallback to original path
+  const useThumbnail = thumbnailsEnabled && file.type === "image";
+  if (useThumbnail) {
+    const filePathEncoded = encodeURIComponent(file.path.substring(7));
+    // Include album ID in thumbnail URL if in multi-album mode
+    if (currentAlbumId) {
+      img.dataset.src = `/thumbnail/${currentAlbumId}/${filePathEncoded}`;
+    } else {
+      img.dataset.src = `/thumbnail/${filePathEncoded}`;
+    }
+  } else {
+    img.dataset.src = file.path;
+  }
 
   // Set click handler
   img.onclick = function () {
@@ -130,7 +142,7 @@ function appendTextContent(div, file) {
 
   const viewLink = document.createElement("a");
   viewLink.className = "view-full";
-  viewLink.innerText = "View Full File";
+  viewLink.innerText = t('actions.viewFullFile');
   viewLink.onclick = function () {
     showFileModal(file);
   };
@@ -140,7 +152,7 @@ function appendTextContent(div, file) {
   downloadLink.className = "download";
   downloadLink.href = file.path;
   downloadLink.download = file.name;
-  downloadLink.innerText = "Download";
+  downloadLink.innerText = t('actions.download');
   actions.appendChild(downloadLink);
 
   div.appendChild(actions);
@@ -160,7 +172,7 @@ function appendOtherContent(div, file) {
   downloadLink.className = "download-button";
   downloadLink.href = file.path;
   downloadLink.download = file.name;
-  downloadLink.innerHTML = "📥 Download File";
+  downloadLink.innerHTML = t('actions.downloadFile');
   div.appendChild(downloadLink);
 }
 
@@ -190,7 +202,7 @@ async function renderTextPreview(file, div) {
       previewDiv.className = "text-preview";
       previewDiv.innerHTML = marked.parse(contentPreview);
       if (hasMore)
-        previewDiv.innerHTML += "<p><em>... (content truncated)</em></p>";
+        previewDiv.innerHTML += "<p><em>" + t('content.truncated') + "</em></p>";
     } else {
       // Code preview with syntax highlighting
       const pre = document.createElement("pre");
@@ -235,7 +247,7 @@ async function renderTextPreview(file, div) {
         more.style.textAlign = "center";
         more.style.padding = "5px";
         more.style.color = "#666";
-        more.innerText = "... (content truncated)";
+        more.innerText = t('content.truncated');
         pre.appendChild(code);
         pre.appendChild(more);
       } else {
@@ -315,7 +327,13 @@ function appendVideoContent(div, file, videoIndex) {
 
     // Get thumbnail URL for this specific video
     const videoPathEncoded = encodeURIComponent(file.path.substring(7));
-    const thumbnailUrl = `/thumbnail/${videoPathEncoded}`;
+    // Include album ID in thumbnail URL if in multi-album mode
+    let thumbnailUrl;
+    if (currentAlbumId) {
+      thumbnailUrl = `/thumbnail/${currentAlbumId}/${videoPathEncoded}`;
+    } else {
+      thumbnailUrl = `/thumbnail/${videoPathEncoded}`;
+    }
 
     // Check if we already have a thumbnail for this series
     let useThumbnailUrl = thumbnailUrl;

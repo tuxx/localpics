@@ -1,4 +1,49 @@
 /* Layout styles */
+
+/* Album selector styles */
+#albumSelectorContainer {
+  display: none;
+  margin: 0 8px;
+  padding: 0 4px;
+}
+
+#albumSelectorContainer .album-label {
+  color: var(--text-secondary, #888);
+  font-size: 0.85em;
+  margin-right: 4px;
+}
+
+#albumSelector {
+  background: var(--bg-primary, #fff);
+  color: var(--text-primary, #333);
+  border: 2px solid var(--accent-color, #007acc);
+  border-radius: 6px;
+  padding: 4px 28px 4px 12px;
+  font-size: 0.95em;
+  font-weight: 500;
+  cursor: pointer;
+  appearance: auto;
+  -webkit-appearance: auto;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+  min-width: 120px;
+}
+
+#albumSelector:hover {
+  border-color: var(--accent-hover, #005a9e);
+  box-shadow: 0 2px 8px rgba(0, 122, 204, 0.3);
+}
+
+#albumSelector:focus {
+  outline: none;
+  border-color: var(--accent-hover, #005a9e);
+  box-shadow: 0 0 0 3px rgba(0, 122, 204, 0.2);
+}
+
+#albumSelector option {
+  padding: 4px 8px;
+}
+
 .container {
   column-gap: 1rem;
   padding: 1rem;
